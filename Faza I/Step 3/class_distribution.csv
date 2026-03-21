@@ -1,0 +1,4 @@
+target_quantile_class,count,pct,minority_flag
+low,609,33.35,False
+high,609,33.35,False
+medium,608,33.3,False
