@@ -17,7 +17,7 @@
 
 Kjo fazë konsiston në përgatitjen e të dhënave, trajtimin e vlerave që mungojnë, balancimin e klasave dhe detektimin e "outliers". 
 
-### Pershkrimi i Datasetit
+### Emri dhe Përshkrimi i Datasetit: **XK-CarbonTrace (2021-2025)**
 Të dhënat janë nxjerrë nga platforma **Electricity Maps** për zonën e Kosovës (XK) dhe mbulojnë periudhën 2021 - 2025. Ky dataset tregon intensitetin e karbonit dhe energjinë e rinovueshme në intervale orare.
 
 - **Burimi:** [Electricity Maps - Zone XK (Kosovo)](https://app.electricitymaps.com/datasets?zone=XK&year=2025&interval=hourly)
