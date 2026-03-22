@@ -11,7 +11,7 @@ Pipeline-i është ndërtuar në **8 hapa ekzekutues**, ku secili folder përmba
 ### 1. [Hapi 1 - Ngarkimi dhe Bashkimi](./Hapi%201%20-%20Ngarkimi%20dhe%20Bashkimi)
 - **Qëllimi:** Agregimi i 5 viteve të dhënash orare në ditor.
 
-### 2. [Hapi 2 - Pastrimi i te dhenave](./Hapi%202%20-%20Pastrimi%20i%20te%20dhenave)
+### 2. [Hapi 2 - Pastrimi i të dhënave](./Hapi%202%20-%20Pastrimi%20i%20te%20dhenave)
 - **Qëllimi:** Sigurimi i integritetit matematikor dhe imputimi.
 
 ### 3. [Hapi 3 - Diskretizimi dhe Inxhinieria](./Hapi%203%20-%20Diskretizimi)

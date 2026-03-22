@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 
 # Path configurations
-INPUT_CSV = Path(__file__).resolve().parent.parent / "Hapi 2 - Pastrimi i te dhenave" / "cleaned_dataset.csv"
+INPUT_CSV = Path(__file__).resolve().parent.parent / "Hapi 2 - Pastrimi i të dhënave" / "cleaned_dataset.csv"
 OUTPUT_DIR = Path(__file__).resolve().parent
 
 def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:

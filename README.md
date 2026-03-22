@@ -31,14 +31,14 @@ Të dhënat janë nxjerrë nga platforma **Electricity Maps** për zonën e Koso
 
 ### Arkitektura e Fazës 1 (Modular Pipeline)
 Sistemi përbëhet nga 8 Hapa Modularë, të organizuar në folderat përkatës:
-1. **[Hapi 1 - Ngarkimi dhe Bashkimi](./Faza%20I/Hapi%201%20-%20Ngarkimi%20dhe%20Bashkimi/README.md):** Bashkimi i skedarëve orarë.
-2. **[Hapi 2 - Pastrimi i te dhenave](./Faza%20I/Hapi%202%20-%20Pastrimi%20i%20te%20dhenave/README.md):** Trajtimi i vlerave munguese.
-3. **[Hapi 3 - Diskretizimi](./Faza%20I/Hapi%203%20-%20Diskretizimi/README.md):** Inxhinieria e veçorive dhe heqja e kolonave redundante.
-4. **[Hapi 4 - Detektimi i Outliers](./Faza%20I/Hapi%204%20-%20Detektimi%20i%20Outliers/README.md):** Auditimi dhe flagging i anomalive.
-5. **[Hapi 5 - Balancimi dhe Mostrimi](./Faza%20I/Hapi%205%20-%20Balancimi%20dhe%20Mostrimi/README.md):** **Fshirja e Outliers** (276 rreshta) dhe ndarja Train/Test.
-6. **[Hapi 6 - Agregimi](./Faza%20I/Hapi%206%20-%20Agregimi/README.md):** Analiza mujore e trendeve.
-7. **[Hapi 7 - Finalizimi i Datasetit](./Faza%20I/Hapi%207%20-%20Finalizimi%20i%20Datasetit/README.md):** Gjenerimi i datasetit të pastër përfundimtar.
-8. **[Hapi 8 - Raporti Final](./Faza%20I/Hapi%208%20-%20Raporti%20Final/README.md):** Dokumentimi vizual dhe PDF.
+1. **[Hapi 1 - Ngarkimi dhe Bashkimi](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%201%20-%20Ngarkimi%20dhe%20Bashkimi/README.md):** Bashkimi i skedarëve orarë.
+2. **[Hapi 2 - Pastrimi i të dhënave](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%202%20-%20Pastrimi%20i%20te%20dhenave/README.md):** Trajtimi i vlerave munguese.
+3. **[Hapi 3 - Diskretizimi](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%203%20-%20Diskretizimi/README.md):** Inxhinieria e veçorive dhe heqja e kolonave redundante.
+4. **[Hapi 4 - Detektimi i Outliers](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%204%20-%20Detektimi%20i%20Outliers/README.md):** Auditimi dhe flagging i anomalive.
+5. **[Hapi 5 - Balancimi dhe Mostrimi](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%205%20-%20Balancimi%20dhe%20Mostrimi/README.md):** **Fshirja e Outliers** (276 rreshta) dhe ndarja Train/Test.
+6. **[Hapi 6 - Agregimi](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%206%20-%20Agregimi/README.md):** Analiza mujore e trendeve.
+7. **[Hapi 7 - Finalizimi i Datasetit](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%207%20-%20Finalizimi%20i%20Datasetit/README.md):** Gjenerimi i datasetit të pastër përfundimtar.
+8. **[Hapi 8 - Raporti Final](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%208%20-%20Raporti%20Final/README.md):** Dokumentimi vizual dhe PDF.
 
 ### Arsyetimi i Teknikave të Përdorura (Justification)
 - **Cilësia e të dhënave:** U përdorën filtrime rigoroze në **Step 1 dhe 2** për të garantuar integritetin rregullator të tipit *timeseries*, pastruar dimensionet dhe përgatitur vizualin.
