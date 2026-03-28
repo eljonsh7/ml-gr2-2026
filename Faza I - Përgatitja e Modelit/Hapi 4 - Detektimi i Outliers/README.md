@@ -1,31 +1,73 @@
-# Hapi 4: Detektimi i Outliers (Multi-Method Outlier Detection)
+# Hapi 4: Detektimi i Outliers
 
-### **Qëllimi**
-Ky hap mbron modelin nga vlerat ekstreme ose të pasakta (anomalitë) në sistemin elektroenergjetik të Kosovës, duke përdorur një qasje me tre metoda paralele.
+## Qëllimi
+Ky hap identifikon anomalitë me tri metoda: IQR, Z-score dhe Isolation Forest. Rreshtat vetëm flag-ohen, nuk fshihen ende.
 
----
+## Input
+Skedari hyrës:
+- `../Hapi 3 - Diskretizimi/dataset_with_target.csv`
 
-### **Metodat e Detektimit:**
-1.  **Z-Score:** Mat distancën e secilës vlerë nga mesatarja në njësi të devijimit standard.
-2.  **IQR (Interquartile Range):** Metodë robuste që identifikon vlerat jashtë "kutive" të shpërndarjes.
-3.  **Isolation Forest:** Një algoritëm Machine Learning (bazuar në pemët e vendimit) që izolon vlerat anomale.
+Kolonat në input:
+```text
+day
+month
+year
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+estimated_hour_share
+hour
+day_of_week
+is_weekend
+carbon_intensity_gap
+cfe_re_gap
+target_quantile_class
+```
 
-### **Rregulla e Konsensusit (Consensus Rule):**
-Për të mos fshirë të dhëna të rëndësishme pa nevojë, një rresht shënohet si **Outlier** vetëm nëse të paktën **dy nga tre** metodat e mësipërme pajtohen.
+## Output
+Skedari i gjeneruar:
+- `outlier_flags_dataset.csv`
 
-> [!NOTE]
-> Ky hap (Hapi 4) shërben për **identifikimin dhe auditimin** e anomalive (flagging), ndërsa **Hapi 5** dhe **Hapi 7** i fshijnë ato automatikisht për të pasur të dhëna "të pastra" për trajnimin e modeleve.
+Kolonat në `outlier_flags_dataset.csv`:
+```text
+day
+month
+year
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+estimated_hour_share
+hour
+day_of_week
+is_weekend
+carbon_intensity_gap
+cfe_re_gap
+target_quantile_class
+iqr_outlier_count
+zscore_outlier_count
+isolation_forest_flag
+outlier_consensus_count
+outlier_consensus_flag
+```
 
----
+## Dataseti që vazhdon në hapin tjetër
+Skedari kryesor për Hapin 5 është `outlier_flags_dataset.csv`.
 
-### **Struktura e Skedarëve**
-- **Input:** Dataseti i plotë `../Hapi 3 - Diskretizimi/dataset_with_target.csv`.
-- **Output-et e gjeneruara:**
-    - `outlier_flags_dataset.csv`: Dataseti origjinal me kolona shtesë që tregojnë statusin e anomalive.
-
----
-
-### **Si të ekzekutohet?**
+## Ekzekutimi
 ```bash
 python step_4.py
 ```

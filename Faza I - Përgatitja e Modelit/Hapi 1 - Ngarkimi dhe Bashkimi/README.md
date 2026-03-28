@@ -1,30 +1,89 @@
-# Hapi 1: Ngarkimi dhe Agregimi Fillestar i të Dhënave
+# Hapi 1: Ngarkimi dhe Bashkimi
 
-### **Qëllimi**
-Ky hap shërben për grumbullimin e të dhënave të papërpunuara orare nga burime të ndryshme vjetore dhe bashkimin e tyre në një strukturë të vetme analitike. Githashtu, kryhet agregimi ditor për të kaluar nga analiza mikroskopike (orare) në atë makroskopike (ditore).
+## Qëllimi
+Ky hap lexon të gjithë skedarët orarë `hourly-2021.csv` deri `hourly-2025.csv`, i bashkon në një dataset të vetëm dhe i agregon nga nivel orar në nivel ditor.
 
----
+## Input
+Skedarët hyrës:
+- `../hourly-2021.csv`
+- `../hourly-2022.csv`
+- `../hourly-2023.csv`
+- `../hourly-2024.csv`
+- `../hourly-2025.csv`
 
-### **Veprimet kryesore:**
-1.  **Leximi i Skedarëve:** Ngarkohen 5 skedarë vjetorë orarë (`hourly-2021.csv` deri `hourly-2025.csv`).
-2.  **Bashkimi (Merging):** Krijohet një matricë origjinale me ~43,824 rreshta dhe 12 kolona.
-3.  **Agregimi Ditor:** Për të reduktuar zhurmën dhe për të lehtësuar trajnimin e modeleve, të dhënat agregohen në nivel ditor duke llogaritur mesataren matematikore për çdo ditë. Kjo redukton datasetin në **1,826 rreshta**.
-4.  **Schema Audit:** Kryhet një kontroll automatik i tipave të të dhënave (int, float, object) dhe identifikohen kolonat me "High Cardinality" (kardinalitet të lartë).
+Kolonat në skedarët hyrës:
+```text
+Datetime (UTC)
+Country
+Zone name
+Zone id
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+```
 
----
+## Output
+Skedarët e gjeneruar:
+- `merged_hourly_dataset.csv`
+- `merged_daily_dataset.csv`
+- `schema_audit.csv`
 
-### **Struktura e Skedarëve**
-- **Input:** Skedarët origjinalë `../hourly-20*.csv` ose `../initial_dataset.csv`.
-- **Output-et e gjeneruara:**
-    - `merged_hourly_dataset.csv`: Të dhënat e bashkuara orare (para agregimit).
-    - `merged_daily_dataset.csv`: Dataseti ditor (baza për vazhdimin e projektit).
-    - `schema_audit.csv`: Raporti teknik i tipave të kolonave.
+Kolonat në `merged_hourly_dataset.csv`:
+```text
+Datetime (UTC)
+Country
+Zone name
+Zone id
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+```
 
----
+Kolonat në `merged_daily_dataset.csv`:
+```text
+Country
+Zone name
+Zone id
+date
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+Datetime (UTC)
+estimated_hour_share
+```
 
-### **Si të ekzekutohet?**
-Për të rifreskuar të dhënat e këtij hapi, ekzekutoni:
+Kolonat në `schema_audit.csv`:
+```text
+column
+dtype
+null_count
+null_pct
+unique_count
+unique_ratio
+sample_value
+high_cardinality_flag
+```
+
+## Dataseti që vazhdon në hapin tjetër
+Skedari kryesor për Hapin 2 është `merged_daily_dataset.csv`.
+
+## Ekzekutimi
 ```bash
 python step_1.py
 ```
-

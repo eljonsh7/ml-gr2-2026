@@ -1,34 +1,79 @@
-# Hapi 2: Pastrimi dhe Trajtimi i vlerave Munguese
+# Hapi 2: Pastrimi i të Dhënave
 
-### **Qëllimi**
-Ky hap realizon pastrimin e datasetit ditor përmes kontrolleve logjike dhe mbushjes së vlerave munguese (imputimit), duke garantuar që të dhënat të jenë matematikisht konsistente për modelim.
+## Qëllimi
+Ky hap kontrollon kufijtë logjikë, filtron rreshtat e pavlefshëm dhe aplikon imputim nëse ka vlera munguese.
 
----
+## Input
+Skedari hyrës:
+- `../Hapi 1 - Ngarkimi dhe Bashkimi/merged_daily_dataset.csv`
 
-### **Veprimet kryesore algoritmike:**
-1.  **Logical Bounds (Kufijtë Logjikë):** Janë definuar rregulla strikte për kolonat specifike:
-    - Kolonat me përqindje (%) duhet të jenë midis **0.0 dhe 100.0**.
-    - Kolonat e intensitetit dhe numërimit duhet të jenë **jo-negative**.
-    - Datat nuk mund të jenë në të ardhmen.
-2.  **Constraint Filtering:** Skripti identifikon çdo rresht që thyen këto rregulla dhe e filtron atë.
-3.  **Imputimi Inteligjent:** 
-    - Për variablat numerike përdoret **Mediana** (më robuste ndaj outliers).
-    - Për variablat kategoriale përdoret **Moda** (vlera më e shpeshtë).
-    - *Shënim:* Në datasetin aktual, cilësia ishte shumë e lartë dhe nuk u gjetën vlera Null.
+Kolonat në input:
+```text
+Country
+Zone name
+Zone id
+date
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+Datetime (UTC)
+estimated_hour_share
+```
 
----
+## Output
+Skedarët e gjeneruar:
+- `cleaned_dataset.csv`
+- `cleaning_log.csv`
+- `imputation_log.csv`
+- `logical_bounds.json`
 
-### **Struktura e Skedarëve**
-- **Input:** Dataseti i agreguar ditor `../Hapi 1/merged_daily_dataset.csv`.
-- **Output-et e gjeneruara:**
-    - `cleaned_dataset.csv`: Dataseti i pastruar dhe gati për procese më komplekse.
-    - `cleaning_log.csv` & `imputation_log.csv`: Regjistrat e të gjitha veprimeve të pastrimit.
-    - `logical_bounds.json`: Konfigurimi i kufijve logjikë të përdorur.
+Kolonat në `cleaned_dataset.csv`:
+```text
+Country
+Zone name
+Zone id
+date
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+Datetime (UTC)
+estimated_hour_share
+```
 
----
+Kolonat në `cleaning_log.csv`:
+```text
+step
+detail
+rows_before
+rows_after
+rows_removed
+```
 
-### **Si të ekzekutohet?**
+Kolonat në `imputation_log.csv`:
+```text
+column
+strategy
+fill_value
+```
+
+## Dataseti që vazhdon në hapin tjetër
+Skedari kryesor për Hapin 3 është `cleaned_dataset.csv`.
+
+## Ekzekutimi
 ```bash
 python step_2.py
 ```
-

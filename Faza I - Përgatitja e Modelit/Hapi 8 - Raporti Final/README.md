@@ -1,25 +1,69 @@
-# Hapi 8: Prezantimi dhe Raportimi (Presentation & Reporting)
+# Hapi 8: Raporti Final
 
-### **Qëllimi**
-Ky hap përfundon Fazën I duke paketuar të gjitha gjetjet analitike në raporte të lexueshme dhe grafika vizualë, të cilët shërbejnë për dokumentimin akademik të projektit.
+## Qëllimi
+Ky hap përmbledh Fazën I në formë raporti dhe grafike.
 
----
+## Input
+Skedarët hyrës kryesorë:
+- `../Hapi 1 - Ngarkimi dhe Bashkimi/merged_daily_dataset.csv`
+- `../Hapi 3 - Diskretizimi/class_distribution.csv`
+- `../Hapi 5 - Balancimi dhe Mostrimi/class_distribution_after_balancing.csv`
+- `../Hapi 7 - Finalizimi i Datasetit/feature_engineered_dataset.csv`
 
-### **Asetet e Gjeneruara:**
-1.  **Null Heatmap (`null_heatmap.png`):** Një vizualizim që vërteton shkencërisht mungesën e vlerave boshe në datasetin tonë ditor.
-2.  **Class Balance Comparison (`class_balance_comparison.png`):** Treguesi grafik i balancës perfekte midis klasave Low, Medium dhe High para dhe pas mostrimit.
-3.  **Phase 1 Report (`phase1_report.md` & `.pdf`):** Një përmbledhje ekzekutive e të gjithë punës së kryer në të 8 hapat, gati për t'u shqyrtuar nga pedagogët/asistentët.
+Kolonat në `merged_daily_dataset.csv`:
+```text
+Country
+Zone name
+Zone id
+date
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+Datetime (UTC)
+estimated_hour_share
+```
 
----
+Kolonat në `feature_engineered_dataset.csv`:
+```text
+day
+month
+year
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+estimated_hour_share
+hour
+day_of_week
+is_weekend
+carbon_intensity_gap
+cfe_re_gap
+target_quantile_class
+```
 
-### **Struktura e Skedarëve**
-- **Input-et:** Të dhënat nga Hapi 1 (agregimi), Hapi 3 (targeti) dhe Hapi 4 (balancimi).
-- **Output-et:** Raportet PDF/Markdown dhe skedarët PNG në këtë folder.
+## Output
+Skedarët e gjeneruar:
+- `null_heatmap.png`
+- `class_balance_comparison.png`
+- `phase1_report.md`
+- `phase1_report.pdf`
 
----
+Ky hap nuk gjeneron dataset të ri tabelor, prandaj nuk ka kolona të reja output për CSV.
 
-### **Si të ekzekutohet?**
+## Ekzekutimi
 ```bash
 python step_8.py
 ```
-
