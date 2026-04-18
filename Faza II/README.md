@@ -16,7 +16,7 @@
 
 Në Fazën I kemi përgatitur datasetin duke bashkuar pesë datasete orare të intensitetit të karbonit (2021–2025), duke i agreguar në nivel ditor, duke kryer pastrimin e të dhënave, inxhinierinë e veçorive, dhe balancimin e klasave me SMOTE. Target-i ynë përfundimtar, `target_quantile_class`, klasifikon çdo ditë në tri klasa: **low** (e ulët), **medium** (mesatare), dhe **high** (e lartë) bazuar në intensitetin e karbonit (gCO₂eq/kWh).
 
-Në këtë fazë (Faza II), kemi trajnuar **6 algoritme të supervised learning** dhe **2 algoritme të unsupervised learning**, duke aplikuar konceptet kryesore të syllabusit të lëndës: *hyperparameter tuning me GridSearchCV*, *cross-validation*, *confusion matrices*, *learning curves* (analiza e overfitting/underfitting), *efekti i regularizimit*, *cost function convergence*, dhe *PCA dimensionality reduction*.
+Në këtë fazë (Faza II), kemi trajnuar **6 algoritme të supervised learning** dhe **2 algoritme të unsupervised learning**, duke aplikuar konceptet kryesore të Machine Learning: *hyperparameter tuning me GridSearchCV*, *cross-validation*, *confusion matrices*, *learning curves* (analiza e overfitting/underfitting), *efekti i regularizimit*, *cost function convergence*, dhe *PCA dimensionality reduction*.
 
 **Të dhënat e përdorura:**
 - **Train set:** 1,460 rreshta × 35 veçori (të balancuara me SMOTE nga Faza I)
