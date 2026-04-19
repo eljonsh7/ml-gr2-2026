@@ -1,13 +1,53 @@
 # Faza II: Analiza dhe Evaluimi i Modeleve
 
 ## Qëllimi i Fazës II
-Qëllimi i kësaj faze është të trajnojmë, krahasojmë dhe diskutojmë modele të ndryshme të Machine Learning për parashikimin e klasës së intensitetit të karbonit në Kosovë. Në këtë fazë nuk mjafton vetëm të paraqiten rezultatet numerike, por duhet të argumentohet:
-- pse u zgjodhën teknikat e caktuara,
-- çfarë roli luan secila teknikë në problem,
-- çfarë tregojnë rezultatet,
-- dhe çfarë nënkuptojnë ato për vazhdimin e analizës.
+Faza II i jep përgjigje pyetjes kryesore të projektit tonë: **a mund të parashikohet me saktësi niveli i intensitetit të karbonit për një ditë të caktuar në Kosovë si `High`, `Medium` ose `Low`, duke u bazuar në veçoritë energjetike dhe kohore të ndërtuara në Fazën I?**
 
-Në këtë mënyrë, Faza II shërben si ura midis përgatitjes së të dhënave në Fazën I dhe interpretimit/analizës më të thellë në fazat pasuese.
+Në këtë fazë nuk është bërë vetëm trajnim mekanik i algoritmeve. Qëllimi ka qenë:
+- të krahasohen modele të ndryshme supervised dhe unsupervised,
+- të argumentohet pse secili model u përfshi në analizë,
+- të interpretohen rezultatet e fituara,
+- dhe të diskutohet se çfarë nënkuptojnë ato për natyrën e problemit dhe për hapat e ardhshëm të projektit.
+
+Në këtë kuptim, Faza II është faza ku dataseti final i Fazës I testohet praktikisht si bazë për modelim.
+
+---
+
+## Struktura e Fazës II
+```text
+Faza II - Analiza dhe evaluimi/
+├── README.md
+├── STUDY_GUIDE_AL.md
+├── STUDY_GUIDE_EN.md
+├── phase2_pipeline.py
+└── output/
+    ├── model_results.csv
+    ├── clustering_results.csv
+    ├── classification_reports.txt
+    ├── results_summary.md
+    ├── phase2_train_raw_features.csv
+    ├── phase2_train_raw_target.csv
+    ├── phase2_test_raw_features.csv
+    ├── phase2_test_target.csv
+    ├── phase2_train_processed_features.csv
+    ├── phase2_test_processed_features.csv
+    ├── train_balanced_features.csv
+    ├── train_balanced_target.csv
+    ├── algorithm_comparison.png
+    ├── feature_importance_rf.png
+    ├── learning_curves.png
+    ├── regularization_effect.png
+    ├── mlp_loss_curve.png
+    ├── mlp_validation_curve.png
+    ├── elbow_and_silhouette.png
+    ├── pca_clusters_comparison.png
+    └── confusion_matrix_*.png
+```
+
+Kjo strukturë e ndan qartë:
+- kodin e pipeline-it,
+- dokumentimin ndihmës për mbrojtje,
+- dhe output-et numerike e vizuale.
 
 ---
 
@@ -45,56 +85,56 @@ cfe_re_gap
 target_quantile_class
 ```
 
-Ky dataset u përdor sepse përfaqëson versionin më të pastër dhe më të qëndrueshëm të të dhënave, pas:
+Ky dataset u përdor sepse përfaqëson versionin më të pastër dhe më të qëndrueshëm të të dhënave pas:
 - bashkimit të të dhënave 2021–2025,
 - agregimit nga orar në ditor,
-- pastrimit,
+- pastrimit logjik dhe imputimit,
 - inxhinierisë së veçorive,
 - dhe finalizimit të datasetit në Fazën I.
 
-Kjo do të thotë se në Fazën II nuk u nisëm nga të dhëna bruto, por nga një dataset i përgatitur posaçërisht për modelim. Ky është një vendim i arsyeshëm metodologjik, sepse ndan qartë:
+Pra, në Fazën II nuk punohet me të dhëna bruto, por me datasetin final të përgatitur posaçërisht për modelim. Kjo është zgjedhje metodologjikisht korrekte, sepse ndan qartë:
 - Fazën I si fazë të përgatitjes së të dhënave,
-- Fazën II si fazë të ndërtimit dhe evaluimit të modeleve.
+- Fazën II si fazë të trajnimit, evaluimit dhe interpretimit.
 
 ---
 
 ## Objektivi i parashikimit
-Problemi ynë është formulua si **klasifikim multiklasor**. Targeti `target_quantile_class` ndan çdo ditë në tri klasa:
+Problemi është formuluar si **klasifikim multiklasor**. Targeti `target_quantile_class` ndan çdo ditë në tri klasa:
 - `High`
 - `Medium`
 - `Low`
 
 Kjo zgjedhje është e rëndësishme sepse:
-- e kthen problemin në një detyrë klasifikimi më të kuptueshme,
-- lehtëson krahasimin ndërmjet algoritmeve klasifikuese,
-- dhe mundëson diskutim më intuitiv të rezultateve sesa një regresion i pastër numerik.
+- e kthen problemin në një formë të qartë klasifikimi,
+- e bën krahasimin e algoritmeve më të kuptueshëm,
+- dhe mundëson interpretim më intuitiv të rezultateve sesa një vlerë e vazhdueshme regresioni.
 
 ---
 
-## Hapat metodologjikë të pipeline-it
-Pipeline-i i Fazës II ndjek këtë rrjedhë:
+## Pipeline-i i aplikuar në Fazën II
+Pipeline-i i Fazës II ndjek këta hapa:
 
 1. Ngarkohet dataseti final nga Faza I.
 2. Ndahen veçoritë (`X`) nga targeti (`y`).
-3. Krijohet një `train_test_split` me `stratify=y`.
-4. Kryhet preprocessing:
+3. Krijohet `train_test_split` me `stratify=y`.
+4. Bëhet preprocessing:
    - `StandardScaler` për kolonat numerike
    - `OneHotEncoder` për kolonat kategoriale
 5. Kontrollohet balanca e klasave vetëm në training split.
 6. Nëse është e nevojshme, aplikohet SMOTE ose ADASYN vetëm në train.
-7. Trajnohen gjashtë algoritme supervised.
-8. Testohen dy algoritme unsupervised për analizë krahasuese.
-9. Gjenerohen grafikë, confusion matrices dhe përmbledhje për interpretim.
+7. Trajnohen 6 algoritme supervised me `GridSearchCV`.
+8. Ekzekutohen 2 algoritme unsupervised për analizë krahasuese.
+9. Gjenerohen matricat e konfiyionit, grafet krahasuese, learning curves dhe raporte përmbledhëse.
 
-Ky organizim është i arsyeshëm sepse ndjek praktikën e mirë të Machine Learning:
+Ky organizim ndjek praktikën e mirë të Machine Learning sepse:
 - test set-i ruhet i paprekur deri në fund,
-- preprocessing mësohet nga training set-i,
-- balancimi kontrollohet vetëm në train,
-- dhe krahasimi i modeleve bëhet mbi të njëjtin test set.
+- preprocessing mësohet nga train set-i,
+- balancimi, nëse do të aplikohej, do të prekte vetëm train set-in,
+- dhe të gjitha modelet testohen mbi të njëjtin test set për krahasim të drejtë.
 
 ---
 
-## Ndarja e të dhënave dhe preprocessing
+## Ndarja e të dhënave dhe preprocessin``g
 Në run-in aktual janë përdorur këto dimensione:
 - Train raw: `1240` rreshta x `19` kolona
 - Test raw: `310` rreshta x `19` kolona
@@ -109,25 +149,84 @@ Shpërndarja e klasave në test set:
 Stratifikimi siguron që raporti i klasave të ruhet afërsisht i njëjtë në train dhe test. Kjo është e rëndësishme sepse:
 - e bën evaluimin më të drejtë,
 - shmang një test set me shpërndarje të shtrembëruar,
-- dhe mban krahasimin e modeleve më të qëndrueshëm.
+- dhe ruan stabilitetin e krahasimit ndërmjet modeleve.
 
 ### Pse u përdor `StandardScaler`?
-Standardizimi u aplikua për kolonat numerike sepse algoritme si:
+Standardizimi ishte i domosdoshëm për kolonat numerike sepse algoritmet si:
 - Logistic Regression,
 - SVM,
 - dhe MLP
 
-janë të ndjeshme ndaj shkallës së ndryshme të veçorive. Pa standardizim, kolonat me vlera numerikisht më të mëdha do të dominonin procesin e optimizimit. Standardizimi e bën krahasimin mes veçorive më të drejtë dhe ndihmon konvergjencën e algoritmeve.
+janë të ndjeshme ndaj shkallës së veçorive. Pa standardizim, kolonat me vlera më të mëdha numerike do të dominonin optimizimin.
 
 ### Pse u përdor `OneHotEncoder`?
-Kolonat kategoriale si `Data source` dhe `Data estimation method` nuk mund të futen drejtpërdrejt në shumicën e algoritmeve. One-hot encoding i transformon ato në forma numerike binare pa imponuar rend artificial ndërmjet kategorive.
+Kolonat kategoriale si `Data source` dhe `Data estimation method` nuk mund të përdoren drejtpërdrejt nga shumica e algoritmeve. One-hot encoding i kthen në forma numerike binare pa krijuar rend artificial ndërmjet kategorive.
 
 ### Pse nuk u përdor SMOTE në këtë run?
-Balancimi u kontrollua vetëm pas ndarjes train/test, siç është praktikë korrekte. Në këtë run, train split rezultoi tashmë mjaft i balancuar, prandaj pipeline-i e kaloi këtë hap me:
+Balancimi u kontrollua pasi u bë train/test split. Në këtë run, train split rezultoi tashmë mjaft i balancuar, prandaj pipeline-i e kaloi këtë hap me:
 
 - `Skipped (already balanced)`
 
-Ky është një vendim i rëndësishëm metodologjik, sepse shmang krijimin e të dhënave sintetike kur ato nuk janë të nevojshme.
+Kjo është e rëndësishme sepse shmang krijimin e të dhënave sintetike kur nuk ka nevojë reale për to.
+
+---
+
+## Algoritmet e përdorura
+
+| # | Algoritmi | Lloji | Qëllimi |
+|---|-----------|-------|----------|
+| 1 | Logistic Regression | Supervised – Klasifikim | Baseline linear për të testuar ndarjen lineare të klasave |
+| 2 | Random Forest | Supervised – Klasifikim | Model jo-linear për të dhëna tabulare dhe analizë të rëndësisë së veçorive |
+| 3 | Gradient Boosting | Supervised – Klasifikim | Model boosting për performancë të lartë në të dhëna tabulare |
+| 4 | SVM (Linear) | Supervised – Klasifikim | Testim i kufijve linearë të vendimmarrjes |
+| 5 | SVM (RBF) | Supervised – Klasifikim | Testim i kufijve jolinearë të vendimmarrjes |
+| 6 | Neural Network (MLP) | Supervised – Klasifikim | Model neuronik për krahasim me algoritmet klasike |
+| 7 | K-Means | Unsupervised | Zbulimi i klasterëve natyralë pa etiketa |
+| 8 | Agglomerative Clustering | Unsupervised | Krahasim i clustering hierarkik me K-Means |
+
+---
+
+## Arsyetimi për zgjedhjen e algoritmeve
+
+### Algoritmet supervised
+
+**1. Logistic Regression**
+- U përfshi si model bazë linear.
+- Është i interpretuar lehtë dhe shërben si pikë reference.
+- Ndihmon për të testuar nëse klasat ndahen mirë edhe me kufij linearë.
+
+**2. Random Forest**
+- Është shumë i përshtatshëm për të dhëna tabulare.
+- Kap marrëdhënie jolineare mes veçorive.
+- Është më robust ndaj ndërveprimeve të ndërlikuara dhe jep `feature importance`, çka është e dobishme për interpretim.
+
+**3. Gradient Boosting**
+- U përdor si model boosting i fuqishëm për të dhëna tabulare.
+- Ndërton pemë sekuencialisht duke korrigjuar gabimet e mëparshme.
+- Shërben si krahasim i drejtpërdrejtë me Random Forest.
+
+**4. SVM (Linear)**
+- U përdor për të testuar nëse problemi ka strukturë lineare të mjaftueshme.
+- Jep krahasim të mirë me Logistic Regression.
+
+**5. SVM (RBF)**
+- U përfshi për të testuar nëse kufijtë ndërmjet klasave janë më shumë jolinearë.
+- Është më fleksibil se varianti linear, prandaj përdoret si krahasim metodologjik.
+
+**6. Neural Network (MLP)**
+- U përfshi sepse rrjetat neurale janë pjesë qendrore e lëndës.
+- Shërben për të testuar nëse një model më fleksibil neuronik sjell përmirësim.
+- Gjeneron edhe loss curve dhe validation curve për diskutim teorik.
+
+### Algoritmet unsupervised
+
+**7. K-Means**
+- U përdor për të parë nëse të dhënat formojnë grupe natyrale pa etiketa.
+- Është efikas dhe i interpretuar lehtë në të dhëna tabulare.
+
+**8. Agglomerative Clustering**
+- U përdor si alternativë hierarkike ndaj K-Means.
+- Ndihmon për të parë nëse një qasje tjetër grupimi jep strukturë më të qartë.
 
 ---
 
@@ -135,165 +234,25 @@ Ky është një vendim i rëndësishëm metodologjik, sepse shmang krijimin e t�
 Për secilin model supervised u përdor:
 - `GridSearchCV`
 - `3-fold cross-validation`
-- metrika e optimizimit: `F1 (macro)`
+- metrika kryesore e optimizimit: `F1 (macro)`
 
 ### Pse `GridSearchCV`?
-Grid search teston kombinime të ndryshme hiperparametrash dhe zgjedh konfigurimin më të mirë sipas një metrike të caktuar. Kjo është më e fortë sesa të zgjidhen parametrat me hamendje, sepse:
-- e bën krahasimin më objektiv,
-- e redukton bias-in e zgjedhjes manuale,
-- dhe rrit besueshmërinë e rezultateve.
+Grid search teston kombinime të ndryshme hiperparametrash dhe zgjedh konfigurimin më të mirë sipas një metrike të caktuar. Kjo e bën krahasimin:
+- më objektiv,
+- më sistematik,
+- dhe më të besueshëm sesa zgjedhja manuale.
 
 ### Pse `F1 (macro)` dhe jo vetëm accuracy?
-Accuracy është e dobishme, por nuk tregon gjithmonë balancën e performancës ndërmjet klasave. `F1 (macro)`:
-- llogarit F1 për secilën klasë veçmas,
-- pastaj i trajton të gjitha klasat në mënyrë të barabartë,
-- dhe është më e përshtatshme për klasifikim multiklasor ku duam performancë të mirë në të gjitha klasat.
-
-Kjo është arsyeja pse `F1 (macro)` u përdor si kriter kryesor i optimizimit dhe krahasimit.
+Accuracy është metrikë e dobishme, por nuk jep gjithmonë pamje të plotë në klasifikim multiklasor. `F1 (macro)`:
+- llogaritet veçmas për secilën klasë,
+- pastaj i trajton klasat në mënyrë të barabartë,
+- dhe është më e përshtatshme kur duam performancë të balancuar në të gjitha klasat.
 
 ---
 
-## Algoritmet supervised të aplikuara
+## Rezultatet e evaluimit
 
-### 1. Logistic Regression
-**Pse u zgjodh:** Logistic Regression u përfshi si model bazë linear. Ai ndihmon për të parë nëse klasat janë të dallueshme kryesisht me kufij linearë. Gjithashtu është model i interpretuar lehtë dhe shpesh shërben si pikë referimi.
-
-**Çfarë u testua:**  
-- `C = [0.01, 0.1, 1, 10]`
-
-**Rezultati optimal:**  
-- `C = 10`
-
-**Rezultatet:**
-- Accuracy: `0.9742`
-- Precision (macro): `0.9742`
-- Recall (macro): `0.9744`
-- F1 (macro): `0.9741`
-
-**Diskutimi:**  
-Ky rezultat është shumë i lartë për një model linear dhe tregon që një pjesë e mirë e strukturës së klasave është e ndarshme edhe pa modele shumë komplekse. Nga classification report vërehet se klasa `Medium` është pak më e vështirë se `High` dhe `Low`, gjë që ka kuptim sepse klasa e mesme zakonisht kufizohet nga të dy anët dhe është më e paqartë.
-
----
-
-### 2. Random Forest
-**Pse u zgjodh:** Random Forest është algoritëm shumë i përshtatshëm për të dhëna tabulare, sidomos kur marrëdhëniet mes veçorive janë jolineare. Përveç kësaj, ai jep edhe rëndësinë e veçorive, çka e bën të vlefshëm jo vetëm për performancë, por edhe për interpretim.
-
-**Çfarë u testua:**  
-- `n_estimators = [100, 200]`
-- `max_depth = [10, 20, None]`
-
-**Rezultati optimal:**  
-- `n_estimators = 100`
-- `max_depth = 10`
-
-**Rezultatet:**
-- Accuracy: `0.9903`
-- Precision (macro): `0.9903`
-- Recall (macro): `0.9905`
-- F1 (macro): `0.9904`
-
-**Diskutimi:**  
-Random Forest ishte ndër modelet më të mira. Kjo sugjeron se të dhënat përmbajnë marrëdhënie jolineare dhe kombinime veçorish që një model linear nuk i kap plotësisht. Fakti që modeli arrin performancë kaq të lartë pa pasur nevojë për thellësi shumë të madhe (`max_depth = 10`) tregon se struktura e të dhënave është e pasur, por jo kaotike.
-
-Nga classification report shihet se të tria klasat trajtohen pothuajse në mënyrë perfekte, çka e bën këtë model shumë të besueshëm për këtë problem.
-
----
-
-### 3. Gradient Boosting
-**Pse u zgjodh:** Gradient Boosting është ndër algoritmet më të fuqishme për të dhëna tabulare, sepse ndërton modelin në mënyrë sekuenciale duke korrigjuar gabimet e pemëve paraprake. Kjo e bën shumë të fortë për kapjen e strukturave të ndërlikuara.
-
-**Çfarë u testua:**  
-- `n_estimators = [100, 200]`
-- `learning_rate = [0.05, 0.1]`
-- `max_depth = [3, 5]`
-
-**Rezultati optimal:**  
-- `n_estimators = 100`
-- `learning_rate = 0.05`
-- `max_depth = 3`
-
-**Rezultatet:**
-- Accuracy: `0.9903`
-- Precision (macro): `0.9904`
-- Recall (macro): `0.9905`
-- F1 (macro): `0.9904`
-
-**Diskutimi:**  
-Gradient Boosting u barazua me Random Forest në performancë. Ky është një tregues shumë i fortë që struktura e të dhënave mbështet shumë mirë modelet me pemë. Parametrat optimalë tregojnë që performanca e lartë u arrit me pemë relativisht të cekëta dhe `learning_rate` të ulët, pra me qasje më konservatore dhe më stabile.
-
-Kjo është e rëndësishme për diskutim, sepse tregon se modeli nuk ka nevojë për kompleksitet ekstrem për të performuar mirë.
-
----
-
-### 4. SVM (Linear)
-**Pse u zgjodh:** SVM Linear u përdor për të testuar nëse klasat mund të ndahen me kufij linearë në hapësirën e transformuar të veçorive. Është një krahasim i vlefshëm me Logistic Regression dhe SVM RBF.
-
-**Çfarë u testua:**  
-- `C = [0.1, 1, 10]`
-
-**Rezultati optimal:**  
-- `C = 10`
-
-**Rezultatet:**
-- Accuracy: `0.9710`
-- Precision (macro): `0.9712`
-- Recall (macro): `0.9713`
-- F1 (macro): `0.9709`
-
-**Diskutimi:**  
-SVM Linear performoi shumë mirë, por pak më dobët se Logistic Regression dhe dukshëm më poshtë se modelet me pemë. Kjo sugjeron që ka ndarje lineare të konsiderueshme në të dhëna, por jo të mjaftueshme për të kapur plotësisht të gjitha kufijtë ndërmjet klasave.
-
-Si te Logistic Regression, klasa `Medium` mbetet disi më sfiduese.
-
----
-
-### 5. SVM (RBF)
-**Pse u zgjodh:** SVM me kernel RBF u përfshi për të testuar nëse kufijtë e klasave janë më tepër jolinearë sesa linearë. Në teori, ky model duhet të performojë më mirë se varianti linear nëse marrëdhëniet janë fort jolineare.
-
-**Çfarë u testua:**  
-- `C = [0.1, 1, 10]`
-- `gamma = [scale, auto]`
-
-**Rezultati optimal:**  
-- `C = 10`
-- `gamma = auto`
-
-**Rezultatet:**
-- Accuracy: `0.9645`
-- Precision (macro): `0.9646`
-- Recall (macro): `0.9649`
-- F1 (macro): `0.9645`
-
-**Diskutimi:**  
-Ky model rezultoi më i dobëti nga algoritmet supervised. Kjo është interesante, sepse teorikisht RBF është më fleksibil. Në praktikë, kjo nënkupton që fleksibiliteti shtesë nuk solli përfitim real dhe mund të ketë krijuar kufij më të ndërlikuar sesa duhej.
-
-Pra, jo çdo model më kompleks jep domosdoshmërisht rezultat më të mirë. Kjo është pikërisht arsyeja pse krahasimi i modeleve është i domosdoshëm.
-
----
-
-### 6. Neural Network (MLP)
-**Pse u zgjodh:** MLP u përfshi sepse rrjetat neurale janë pjesë e rëndësishme e syllabusi-it dhe ofrojnë një qasje të ndryshme nga modelet klasike. Ky model teston nëse një strukturë më fleksibile neuronale sjell përmirësim në performancë.
-
-**Çfarë u testua:**  
-- `hidden_layer_sizes = [(64, 32), (128, 64)]`
-- `alpha = [0.0001, 0.001]`
-
-**Rezultati optimal:**  
-- `hidden_layer_sizes = (128, 64)`
-- `alpha = 0.0001`
-
-**Rezultatet:**
-- Accuracy: `0.9710`
-- Precision (macro): `0.9716`
-- Recall (macro): `0.9712`
-- F1 (macro): `0.9712`
-
-**Diskutimi:**  
-MLP performoi mirë, por nuk e kaloi Random Forest dhe Gradient Boosting. Kjo është shumë tipike në të dhëna tabulare: rrjetat neurale jo gjithmonë dominojnë, sidomos kur dimensioni i problemit është i moderuar dhe veçoritë janë të strukturuara mirë. Pra, fakti që MLP nuk fitoi nuk është dobësi e analizës; përkundrazi, është gjetje e rëndësishme që tregon se modelet me pemë janë më të përshtatshme për këtë rast.
-
----
-
-## Tabela krahasuese e modeleve supervised
+### Modelet supervised – krahasimi kryesor
 | Model | Best Params | CV F1 (macro) | Accuracy | Precision (macro) | Recall (macro) | F1 (macro) |
 |---|---|---:|---:|---:|---:|---:|
 | Logistic Regression | `{"C": 10}` | 0.9847 | 0.9742 | 0.9742 | 0.9744 | 0.9741 |
@@ -303,121 +262,70 @@ MLP performoi mirë, por nuk e kaloi Random Forest dhe Gradient Boosting. Kjo ë
 | SVM (RBF) | `{"C": 10, "gamma": "auto"}` | 0.9599 | 0.9645 | 0.9646 | 0.9649 | 0.9645 |
 | Neural Network (MLP) | `{"alpha": 0.0001, "hidden_layer_sizes": [128, 64]}` | 0.9766 | 0.9710 | 0.9716 | 0.9712 | 0.9712 |
 
-### Diskutim i përgjithshëm
-Nga kjo tabelë vërehen disa gjëra të rëndësishme:
-- Të gjithë modelet supervised performuan shumë mirë, me F1 macro mbi `0.96`.
-- Kjo tregon se veçoritë e krijuara në Fazën I janë vërtet informative.
-- Modelet me pemë (`Random Forest`, `Gradient Boosting`) dominuan qartë.
-- Diferencat mes modeleve lineare dhe jo-lineare tregojnë se problemi përmban strukturë jolineare, por jo aq të çrregullt sa të kërkojë domosdoshmërisht rrjeta neurale të thella.
+### Diskutimi i rezultateve supervised
+Nga rezultatet vërehen disa përfundime të rëndësishme:
+- Të gjithë modelet supervised performuan mirë, me `F1 (macro)` mbi `0.96`.
+- Kjo tregon se veçoritë e krijuara në Fazën I janë të fuqishme dhe informative.
+- Dy modelet më të mira ishin:
+  - `Random Forest`
+  - `Gradient Boosting`
+
+Të dy arritën:
+- `Accuracy = 0.9903`
+- `F1 (macro) = 0.9904`
+
+Ky rezultat sugjeron se të dhënat kanë strukturë jolineare që modelet me pemë e kapin shumë mirë.
+
+Nga ana tjetër:
+- Logistic Regression dhe SVM Linear performuan shumë mirë, çka tregon se ekziston edhe komponent linear në problem.
+- SVM RBF ishte më i dobëti ndër modelet supervised, gjë që tregon se fleksibiliteti shtesë nuk solli përmirësim real.
+- MLP performoi mirë, por nuk e kaloi Random Forest dhe Gradient Boosting. Kjo është tipike për shumë probleme tabulare ku modelet me pemë shpesh dalin më të forta sesa rrjetat neurale.
+
+Nga classification reports vërehet se klasa `Medium` është më sfiduese se `High` dhe `Low`. Kjo është logjike sepse përfaqëson raste kufitare ndërmjet dy klasave të tjera.
+
+### Raportet sipas klasave
+Nga `classification_reports.txt` dallohet:
+- `High` dhe `Low` parashikohen pak më lehtë
+- `Medium` ka më shumë konfuzion në pothuajse të gjitha modelet
+
+Kjo tregon se gabimet nuk janë të rastësishme, por lidhen me strukturën e problemit dhe afërsinë ndërmjet klasave.
+
+### Modelet unsupervised
+- K-Means silhouette = `0.2110`
+- Agglomerative silhouette = `0.1958`
+
+### Diskutimi i rezultateve unsupervised
+Këto vlera janë relativisht të ulëta dhe tregojnë se klasat nuk formojnë klasterë shumë të fortë natyralë pa etiketa. Kjo do të thotë se:
+- qasja supervised është më e përshtatshme për këtë problem,
+- ndërsa clustering përdoret më tepër për analizë ndihmëse dhe jo si zgjidhje kryesore.
 
 ---
 
-## Analiza e klasifikimit sipas klasave
-Nga `classification_reports.txt` vërehet se:
-- klasat `High` dhe `Low` parashikohen pak më lehtë,
-- ndërsa `Medium` është klasa më sfiduese pothuajse në të gjithë algoritmet.
+## Diskutimi i grafeve të gjeneruara
+Në Fazën II janë gjeneruar grafe që mbështesin argumentimin:
+- `algorithm_comparison.png`: krahasimi i performancës së modeleve supervised
+- `feature_importance_rf.png`: rëndësia e veçorive sipas Random Forest
+- `learning_curves.png`: analiza e overfitting/underfitting
+- `regularization_effect.png`: efekti i parametrit `C` te Logistic Regression
+- `mlp_loss_curve.png` dhe `mlp_validation_curve.png`: konvergjenca dhe stabiliteti i MLP
+- `elbow_and_silhouette.png`: sjellja e clustering për vlera të ndryshme të `k`
+- `pca_clusters_comparison.png`: krahasimi vizual i clustering me etiketat reale
+- `confusion_matrix_*.png`: analiza e gabimeve për secilin model
 
-Kjo është logjike, sepse `Medium` ndodhet midis dy klasave të tjera dhe shpesh përfaqëson raste kufitare. Kjo e bën më të vështirë për modelet të vendosin nëse një ditë është vërtet `Medium` apo më afër `High` ose `Low`.
-
-Ky është një diskutim i rëndësishëm, sepse tregon se gabimet e modeleve nuk janë të rastësishme, por burojnë nga struktura e vet problemit.
-
----
-
-## Analiza e algoritmeve unsupervised
-Në këtë fazë janë aplikuar edhe dy algoritme unsupervised:
-- K-Means
-- Agglomerative Clustering
-
-Rezultatet:
-- K-Means silhouette score: `0.2110`
-- Agglomerative silhouette score: `0.1958`
-
-### Pse u përdorën?
-Këto algoritme u përdorën jo për të zëvendësuar klasifikimin supervised, por për të testuar nëse në të dhëna ekzistojnë grupime natyrale të forta pa përdorur etiketat.
-
-### Çfarë nënkuptojnë këto rezultate?
-Silhouette score mat sa mirë është ndarë secili grup nga grupet e tjera. Vlera më afër `1` do të thotë grupim i fortë dhe i pastër. Vlera afër `0` tregon mbivendosje të konsiderueshme. Rezultatet rreth `0.20` janë relativisht të dobëta dhe tregojnë se:
-- klasat `High`, `Medium`, `Low` nuk formojnë klasterë shumë të qartë në mënyrë natyrale,
-- dhe se etiketat e targetit janë më të kuptueshme përmes qasjes supervised sesa clustering.
-
-Ky është një rezultat i rëndësishëm teorik, sepse justifikon pse problemi ynë duhet trajtuar si problem klasifikimi i mbikëqyrur.
-
----
-
-## Diskutimi i grafikëve të gjeneruar
-
-### 1. `algorithm_comparison.png`
-Ky grafik jep krahasimin vizual të modeleve supervised në metrikat kryesore. Është i rëndësishëm sepse bën menjëherë të dukshme diferencat mes modeleve dhe konfirmon epërsinë e Random Forest dhe Gradient Boosting.
-
-### 2. `feature_importance_rf.png`
-Ky grafik paraqet rëndësinë relative të veçorive në Random Forest. Kjo ndihmon në interpretimin e modelit dhe tregon cilat karakteristika kontribuojnë më shumë në vendimmarrje. Për raport akademik, ky grafik është me vlerë sepse lidh modelimin me kuptimin e të dhënave.
-
-### 3. `learning_curves.png`
-Ky grafik shërben për të diskutuar overfitting dhe underfitting. Nëse training score është shumë më i lartë se validation score, kemi shenjë mbipërshtatjeje. Në run-in aktual, diferenca mbetet e kontrolluar, çka sugjeron generalizim të mirë.
-
-### 4. `regularization_effect.png`
-Ky grafik tregon si ndryshon performanca e Logistic Regression me vlera të ndryshme të `C`. Ai ilustron në praktikë idenë e kompromisit bias-variance dhe është i rëndësishëm për të justifikuar përdorimin e regularizimit.
-
-### 5. `mlp_loss_curve.png` dhe `mlp_validation_curve.png`
-Këto dy grafikë demonstrojnë si neural network mëson gjatë epokave. Rënia e loss-it tregon konvergjencë, ndërsa validation curve tregon stabilitetin e modelit gjatë trajnimit.
-
-### 6. `elbow_and_silhouette.png`
-Ky grafik është i rëndësishëm për pjesën unsupervised, sepse tregon se cilat vlera të `k` u testuan dhe sa i arsyeshëm është grupimi me `k=3`.
-
-### 7. `pca_clusters_comparison.png`
-Ky grafik ndihmon në krahasimin vizual të clustering me etiketat reale. Ai është shumë i dobishëm në diskutim, sepse e bën të qartë pse unsupervised learning nuk i kap mirë klasat reale.
-
-### 8. `confusion_matrix_*.png`
-Matrica e konfuzionit për secilin model është shumë e rëndësishme sepse nuk tregon vetëm sa gabime ka modeli, por edhe **ku** gabon. Në këtë projekt, gabimet priren të ndodhin më shumë rreth klasës `Medium`, gjë që përputhet me interpretimin tonë teorik.
+Këto grafe janë të rëndësishme sepse e bëjnë diskutimin më të argumentuar dhe më të kuptueshëm vizualisht.
 
 ---
 
 ## Përfundimi i Fazës II
-Nga të gjitha eksperimentet e zhvilluara, mund të nxirren këto përfundime:
+Nga e gjithë analiza mund të nxirren këto përfundime:
+1. Dataseti final i Fazës I është i përshtatshëm dhe cilësor për klasifikim.
+2. Të gjitha modelet supervised arritën performancë të lartë.
+3. `Random Forest` dhe `Gradient Boosting` ishin modelet më të forta.
+4. Modelet lineare treguan se ekziston edhe strukturë lineare në problem.
+5. MLP dhe SVM RBF nuk sollën përmirësim ndaj modeleve me pemë.
+6. Algoritmet unsupervised nuk formuan klasterë të fortë, çka e justifikon qasjen supervised.
 
-1. Dataseti i përpunuar në Fazën I është mjaft cilësor dhe shumë informativ për detyrën e klasifikimit.
-2. Të gjitha modelet supervised arritën performancë të lartë, çka tregon se problemi është i modelueshëm mirë.
-3. `Random Forest` dhe `Gradient Boosting` arritën performancën më të mirë me:
-   - `Accuracy = 0.9903`
-   - `F1 (macro) = 0.9904`
-4. Modelet lineare si Logistic Regression dhe SVM Linear performuan gjithashtu shumë mirë, duke treguar se një pjesë e strukturës së problemit është lineare.
-5. SVM RBF dhe MLP nuk sollën përmirësim mbi modelet me pemë, çka sugjeron se për këtë problem, modelet e bazuara në pemë janë më të përshtatshme.
-6. Algoritmet unsupervised dhanë silhouette score të ulët, gjë që tregon se klasat nuk formojnë klasterë të fortë natyralë pa etiketa.
+Pra, Faza II tregoi jo vetëm se mund të ndërtohen modele shumë të sakta për këtë problem, por edhe pse qasja e zgjedhur është metodologjikisht e qëndrueshme dhe e arsyetuar mirë.
 
-Pra, Faza II jo vetëm që tregoi se mund të ndërtohen modele shumë të sakta për këtë problem, por gjithashtu tregoi qartë **pse** qasja supervised është më e përshtatshme dhe **si** duhet interpretuar performanca e modeleve në raport me natyrën e të dhënave.
-
----
-
-## Output-et kryesore
-
-### Skedarët tabelorë
-- `output/model_results.csv`
-- `output/clustering_results.csv`
-- `output/classification_reports.txt`
-- `output/results_summary.md`
-- `output/phase2_train_raw_features.csv`
-- `output/phase2_train_raw_target.csv`
-- `output/phase2_test_raw_features.csv`
-- `output/phase2_test_target.csv`
-- `output/phase2_train_processed_features.csv`
-- `output/phase2_test_processed_features.csv`
-- `output/train_balanced_features.csv`
-- `output/train_balanced_target.csv`
-
-### Grafikët
-- `output/algorithm_comparison.png`
-- `output/feature_importance_rf.png`
-- `output/learning_curves.png`
-- `output/regularization_effect.png`
-- `output/mlp_loss_curve.png`
-- `output/mlp_validation_curve.png`
-- `output/elbow_and_silhouette.png`
-- `output/pca_clusters_comparison.png`
-- `output/confusion_matrix_*.png`
-
----
-
-## Ekzekutimi
-```bash
-python phase2_pipeline.py
-```
+Dokumentimi i plotë i kësaj faze gjendet te:
+- `./Faza II - Analiza dhe evaluimi/README.md`

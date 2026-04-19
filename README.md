@@ -12,68 +12,239 @@
 
 ---
 
-## Faza I: Përgatitja e modelit
-Kjo fazë konsiston në përgatitjen e të dhënave, trajtimin e vlerave që mungojnë, balancimin e klasave dhe detektimin e "outliers". 
+## Faza I: Përgatitja dhe Inxhinieria e të Dhënave
 
-### Emri dhe Përshkrimi i Datasetit: **XK-CarbonTrace (2021-2025)**
-Të dhënat janë nxjerrë nga platforma **Electricity Maps** për zonën e Kosovës (XK) dhe mbulojnë periudhën 2021 - 2025. Ky dataset tregon intensitetin e karbonit dhe energjinë e rinovueshme në intervale orare.
+Kjo fazë e transformon datasetin orar të karbonit për Kosovën në një dataset ditor të pastruar, të inxhinieruar dhe gati për përdorim analitik dhe modelim.
 
-- **Burimi:** [Electricity Maps - Zone XK (Kosovo)](https://app.electricitymaps.com/datasets?zone=XK&year=2025&interval=hourly)
-- **Numri i Atributeve:** 11 atribute fillestare të cilat u zgjeruan përmes inxhinierisë së veçorive, dhe më vonë arritën në 30.
-- **Numri i Objekteve:** 43,824 rreshta kohorë (orare) -> Të agreguara në 1,826 ditë (rreshta ditorë).
-- **Kolonat fillestare të input-it:**
-  - `Datetime (UTC)`
-  - `Country`
-  - `Zone name`
-  - `Zone id`
-  - `Carbon intensity gCO₂eq/kWh (direct)`
-  - `Carbon intensity gCO₂eq/kWh (Life cycle)`
-  - `Carbon-free energy percentage (CFE%)`
-  - `Renewable energy percentage (RE%)`
-  - `Data source`
-  - `Data estimated`
-  - `Data estimation method`
-- **Kolonat e datasetit final të Fazës I:**
-  - `day`
-  - `month`
-  - `year`
-  - `Carbon intensity gCO₂eq/kWh (direct)`
-  - `Carbon intensity gCO₂eq/kWh (Life cycle)`
-  - `Carbon-free energy percentage (CFE%)`
-  - `Renewable energy percentage (RE%)`
-  - `Data source`
-  - `Data estimated`
-  - `Data estimation method`
-  - `source_file`
-  - `estimated_hour_flag`
-  - `hourly_row_count`
-  - `estimated_hour_share`
-  - `hour`
-  - `day_of_week`
-  - `is_weekend`
-  - `carbon_intensity_gap`
-  - `cfe_re_gap`
-  - `target_quantile_class`
+### Inputi fillestar i Fazës I
+Skedarët hyrës:
+- `hourly-2021.csv`
+- `hourly-2022.csv`
+- `hourly-2023.csv`
+- `hourly-2024.csv`
+- `hourly-2025.csv`
 
-### Arkitektura e Fazës 1 (Modular Pipeline)
-Sistemi përbëhet nga 8 Hapa Modularë, të organizuar në folderat përkatës:
-1. **[Hapi 1 - Ngarkimi dhe Bashkimi](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%201%20-%20Ngarkimi%20dhe%20Bashkimi/README.md):** 11 kolona hyrëse orare -> 16 kolona ditore.
-2. **[Hapi 2 - Pastrimi i të dhënave](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%202%20-%20Pastrimi%20i%20t%C3%AB%20dh%C3%ABnave/README.md):** 16 kolona hyrëse -> 16 kolona të pastruara.
-3. **[Hapi 3 - Diskretizimi](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%203%20-%20Diskretizimi/README.md):** 16 kolona hyrëse -> 20 kolona me target dhe feature engineering.
-4. **[Hapi 4 - Detektimi i Outliers](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%204%20-%20Detektimi%20i%20Outliers/README.md):** 20 kolona hyrëse -> 25 kolona me flag-e të anomalive.
-5. **[Hapi 5 - Balancimi dhe Mostrimi](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%205%20-%20Balancimi%20dhe%20Mostrimi/README.md):** 25 kolona hyrëse -> matrica train/test për modelim.
-6. **[Hapi 6 - Agregimi](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%206%20-%20Agregimi/README.md):** 20 kolona hyrëse -> 31 kolona mujore të agreguara.
-7. **[Hapi 7 - Finalizimi i Datasetit](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%207%20-%20Finalizimi%20i%20Datasetit/README.md):** 25 kolona hyrëse -> 20 kolona në datasetin final.
-8. **[Hapi 8 - Raporti Final](./Faza%20I%20-%20P%C3%ABrgatitja%20e%20Modelit/Hapi%208%20-%20Raporti%20Final/README.md):** Përmbledhja vizuale dhe raporti PDF/Markdown.
+Kolonat fillestare:
+```text
+Datetime (UTC)
+Country
+Zone name
+Zone id
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+```
 
-### Arsyetimi i Teknikave të Përdorura (Justification)
-- **Cilësia e të dhënave:** Hapi 1 dhe Hapi 2 sigurojnë që dataseti të kalojë nga struktura orare në ditor dhe të kontrollohet me kufij logjikë e imputim.
-- **Balancimi i klasave:** Targeti u krijua me diskretizim në tri klasa (`low`, `medium`, `high`). Në run-in aktual klasat dolën tashmë të balancuara, prandaj nuk u shtuan raste sintetike.
-- **Drejtimi i Outlier Detection:** Hapi 4 përdor IQR, Z-Score dhe Isolation Forest. Outlier-at flag-ohen me rregull konsensusi 2 nga 3.
+### Rrjedha e 8 hapave
 
-### Dataseti final i Fazës I
-Dataseti final kryesor është:
+#### Hapi 1 - Ngarkimi dhe Bashkimi
+- Input: 11 kolona orare
+- Output kryesor: `merged_daily_dataset.csv`
+
+Kolonat e output-it:
+```text
+Country
+Zone name
+Zone id
+date
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+Datetime (UTC)
+estimated_hour_share
+```
+
+#### Hapi 2 - Pastrimi i të Dhënave
+- Input: `merged_daily_dataset.csv`
+- Output kryesor: `cleaned_dataset.csv`
+
+Kolonat e output-it:
+```text
+Country
+Zone name
+Zone id
+date
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+Datetime (UTC)
+estimated_hour_share
+```
+
+#### Hapi 3 - Diskretizimi
+- Input: `cleaned_dataset.csv`
+- Output kryesor: `dataset_with_target.csv`
+
+Kolonat e output-it:
+```text
+day
+month
+year
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+estimated_hour_share
+hour
+day_of_week
+is_weekend
+carbon_intensity_gap
+cfe_re_gap
+target_quantile_class
+```
+
+#### Hapi 4 - Detektimi i Outliers
+- Input: `dataset_with_target.csv`
+- Output kryesor: `outlier_flags_dataset.csv`
+
+Kolonat shtesë të output-it:
+```text
+iqr_outlier_count
+zscore_outlier_count
+isolation_forest_flag
+outlier_consensus_count
+outlier_consensus_flag
+```
+
+#### Hapi 5 - Balancimi dhe Mostrimi
+- Input: `outlier_flags_dataset.csv`
+- Output-e kryesore:
+  - `train_balanced_features.csv`
+  - `train_balanced_target.csv`
+  - `test_features.csv`
+  - `test_target.csv`
+
+Kolonat e matricës së feature-ve:
+```text
+numeric__day
+numeric__month
+numeric__year
+numeric__Carbon intensity gCO₂eq/kWh (direct)
+numeric__Carbon intensity gCO₂eq/kWh (Life cycle)
+numeric__Carbon-free energy percentage (CFE%)
+numeric__Renewable energy percentage (RE%)
+numeric__Data estimated
+numeric__estimated_hour_flag
+numeric__hourly_row_count
+numeric__estimated_hour_share
+numeric__hour
+numeric__day_of_week
+numeric__is_weekend
+numeric__carbon_intensity_gap
+numeric__cfe_re_gap
+categorical__Data source_Electricity Maps Estimation
+categorical__Data source_entsoe.eu
+categorical__Data source_kostt.com
+categorical__Data estimation method_Unknown
+```
+
+Kolona e target-it:
+```text
+target_quantile_class
+```
+
+#### Hapi 6 - Agregimi
+- Input: `feature_engineered_dataset.csv`
+- Output kryesor: `aggregated_dataset.csv`
+
+Kolonat e output-it:
+```text
+year
+month
+day_mean
+day_sum
+Carbon intensity gCO₂eq/kWh (direct)_mean
+Carbon intensity gCO₂eq/kWh (direct)_sum
+Carbon intensity gCO₂eq/kWh (Life cycle)_mean
+Carbon intensity gCO₂eq/kWh (Life cycle)_sum
+Carbon-free energy percentage (CFE%)_mean
+Carbon-free energy percentage (CFE%)_sum
+Renewable energy percentage (RE%)_mean
+Renewable energy percentage (RE%)_sum
+Data estimated_mean
+Data estimated_sum
+estimated_hour_flag_mean
+estimated_hour_flag_sum
+hourly_row_count_mean
+hourly_row_count_sum
+estimated_hour_share_mean
+estimated_hour_share_sum
+hour_mean
+hour_sum
+day_of_week_mean
+day_of_week_sum
+is_weekend_mean
+is_weekend_sum
+carbon_intensity_gap_mean
+carbon_intensity_gap_sum
+cfe_re_gap_mean
+cfe_re_gap_sum
+row_count_in_month_count
+```
+
+#### Hapi 7 - Finalizimi i Datasetit
+- Input: `outlier_flags_dataset.csv`
+- Output kryesor: `feature_engineered_dataset.csv`
+
+Kolonat e output-it:
+```text
+day
+month
+year
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+estimated_hour_share
+hour
+day_of_week
+is_weekend
+carbon_intensity_gap
+cfe_re_gap
+target_quantile_class
+```
+
+#### Hapi 8 - Raporti Final
+- Input: rezultatet nga Hapi 1, Hapi 3, Hapi 5 dhe Hapi 7
+- Output: `null_heatmap.png`, `class_balance_comparison.png`, `phase1_report.md`, `phase1_report.pdf`
+
+Ky hap nuk prodhon dataset të ri CSV.
+
+### Cili është dataseti final?
+Dataseti final kryesor i Fazës I është:
 - `./Faza I - Përgatitja e Modelit/Hapi 7 - Finalizimi i Datasetit/feature_engineered_dataset.csv`
+
+Ky është master dataset-i ditor i përgatitur për analiza të mëtejshme dhe si referencë kryesore e Fazës I.
 
 Datasetet e gatshme për modelim në Fazën II janë:
 - `./Faza I - Përgatitja e Modelit/Hapi 5 - Balancimi dhe Mostrimi/train_balanced_features.csv`
@@ -84,151 +255,326 @@ Datasetet e gatshme për modelim në Fazën II janë:
 ---
 
 ## Faza II: Analiza dhe Evaluimi i Modeleve
-Kjo fazë shërben për ndërtimin, krahasimin dhe diskutimin e modeleve të Machine Learning për parashikimin e klasës së intensitetit të karbonit. Në këtë fazë nuk është bërë vetëm ekzekutimi i algoritmeve, por edhe arsyetimi i zgjedhjes së tyre, diskutimi i rezultateve të fituara dhe interpretimi i sjelljes së modeleve në raport me natyrën e të dhënave.
 
-### Dataseti hyrës i Fazës II
+## Qëllimi i Fazës II
+Faza II i jep përgjigje pyetjes kryesore të projektit tonë: **a mund të parashikohet me saktësi niveli i intensitetit të karbonit për një ditë të caktuar në Kosovë si `High`, `Medium` ose `Low`, duke u bazuar në veçoritë energjetike dhe kohore të ndërtuara në Fazën I?**
+
+Në këtë fazë nuk është bërë vetëm trajnim mekanik i algoritmeve. Qëllimi ka qenë:
+- të krahasohen modele të ndryshme supervised dhe unsupervised,
+- të argumentohet pse secili model u përfshi në analizë,
+- të interpretohen rezultatet e fituara,
+- dhe të diskutohet se çfarë nënkuptojnë ato për natyrën e problemit dhe për hapat e ardhshëm të projektit.
+
+Në këtë kuptim, Faza II është faza ku dataseti final i Fazës I testohet praktikisht si bazë për modelim.
+
+---
+
+## Struktura e Fazës II
+```text
+Faza II - Analiza dhe evaluimi/
+├── README.md
+├── STUDY_GUIDE_AL.md
+├── STUDY_GUIDE_EN.md
+├── phase2_pipeline.py
+└── output/
+    ├── model_results.csv
+    ├── clustering_results.csv
+    ├── classification_reports.txt
+    ├── results_summary.md
+    ├── phase2_train_raw_features.csv
+    ├── phase2_train_raw_target.csv
+    ├── phase2_test_raw_features.csv
+    ├── phase2_test_target.csv
+    ├── phase2_train_processed_features.csv
+    ├── phase2_test_processed_features.csv
+    ├── train_balanced_features.csv
+    ├── train_balanced_target.csv
+    ├── algorithm_comparison.png
+    ├── feature_importance_rf.png
+    ├── learning_curves.png
+    ├── regularization_effect.png
+    ├── mlp_loss_curve.png
+    ├── mlp_validation_curve.png
+    ├── elbow_and_silhouette.png
+    ├── pca_clusters_comparison.png
+    └── confusion_matrix_*.png
+```
+
+Kjo strukturë e ndan qartë:
+- kodin e pipeline-it,
+- dokumentimin ndihmës për mbrojtje,
+- dhe output-et numerike e vizuale.
+
+---
+
+## Dataseti hyrës dhe arsyetimi i përdorimit
 Inputi i vetëm i Fazës II është dataseti final i përpunuar në Fazën I:
+
 - `./Faza I - Përgatitja e Modelit/Hapi 7 - Finalizimi i Datasetit/feature_engineered_dataset.csv`
 
 Ky dataset përmban:
-- 1,550 rreshta
-- 20 kolona
+- `1550` rreshta
+- `20` kolona
 - targetin `target_quantile_class`
 
-Kolonat kryesore të përdorura janë:
-- `day`, `month`, `year`
-- `Carbon intensity gCO₂eq/kWh (direct)`
-- `Carbon intensity gCO₂eq/kWh (Life cycle)`
-- `Carbon-free energy percentage (CFE%)`
-- `Renewable energy percentage (RE%)`
-- `Data source`
-- `Data estimated`
-- `Data estimation method`
-- `source_file`
-- `estimated_hour_flag`
-- `hourly_row_count`
-- `estimated_hour_share`
-- `hour`
-- `day_of_week`
-- `is_weekend`
-- `carbon_intensity_gap`
-- `cfe_re_gap`
-- `target_quantile_class`
+Kolonat hyrëse janë:
+```text
+day
+month
+year
+Carbon intensity gCO₂eq/kWh (direct)
+Carbon intensity gCO₂eq/kWh (Life cycle)
+Carbon-free energy percentage (CFE%)
+Renewable energy percentage (RE%)
+Data source
+Data estimated
+Data estimation method
+source_file
+estimated_hour_flag
+hourly_row_count
+estimated_hour_share
+hour
+day_of_week
+is_weekend
+carbon_intensity_gap
+cfe_re_gap
+target_quantile_class
+```
 
-Ky dataset u zgjodh sepse përfaqëson versionin final dhe më të qëndrueshëm të të dhënave pas gjithë hapave të Fazës I. Kjo ndarje është metodologjikisht e arsyeshme, sepse Faza I trajton përgatitjen e të dhënave, ndërsa Faza II fokusohet ekskluzivisht në modelim dhe evaluim.
+Ky dataset u përdor sepse përfaqëson versionin më të pastër dhe më të qëndrueshëm të të dhënave pas:
+- bashkimit të të dhënave 2021–2025,
+- agregimit nga orar në ditor,
+- pastrimit logjik dhe imputimit,
+- inxhinierisë së veçorive,
+- dhe finalizimit të datasetit në Fazën I.
 
-### Objektivi i Fazës II
-Problemi u formulua si klasifikim multiklasor, ku targeti `target_quantile_class` ndan çdo ditë në tri kategori:
+Pra, në Fazën II nuk punohet me të dhëna bruto, por me datasetin final të përgatitur posaçërisht për modelim. Kjo është zgjedhje metodologjikisht korrekte, sepse ndan qartë:
+- Fazën I si fazë të përgatitjes së të dhënave,
+- Fazën II si fazë të trajnimit, evaluimit dhe interpretimit.
+
+---
+
+## Objektivi i parashikimit
+Problemi është formuluar si **klasifikim multiklasor**. Targeti `target_quantile_class` ndan çdo ditë në tri klasa:
 - `High`
 - `Medium`
 - `Low`
 
-Kjo zgjedhje mundëson analizë më të qartë të modeleve klasifikuese dhe e bën interpretimin e rezultateve më intuitiv sesa një regresion i thjeshtë numerik.
+Kjo zgjedhje është e rëndësishme sepse:
+- e kthen problemin në një formë të qartë klasifikimi,
+- e bën krahasimin e algoritmeve më të kuptueshëm,
+- dhe mundëson interpretim më intuitiv të rezultateve sesa një vlerë e vazhdueshme regresioni.
 
-### Hapat metodologjikë të pipeline-it
-Në Fazën II janë ndjekur këta hapa:
-1. Ngarkimi i datasetit final nga Faza I.
-2. Ndarja e veçorive (`X`) nga targeti (`y`).
-3. Krijimi i `train_test_split` me `stratify=y`.
-4. Aplikimi i preprocessing:
+---
+
+## Pipeline-i i aplikuar në Fazën II
+Pipeline-i i Fazës II ndjek këta hapa:
+
+1. Ngarkohet dataseti final nga Faza I.
+2. Ndahen veçoritë (`X`) nga targeti (`y`).
+3. Krijohet `train_test_split` me `stratify=y`.
+4. Bëhet preprocessing:
    - `StandardScaler` për kolonat numerike
    - `OneHotEncoder` për kolonat kategoriale
-5. Kontrollimi i balancës së klasave vetëm në training split.
-6. Aplikimi i SMOTE/ADASYN vetëm nëse do të kishte nevojë.
-7. Trajnimi i 6 algoritmeve supervised.
-8. Testimi i 2 algoritmeve unsupervised për analizë krahasuese.
-9. Gjenerimi i matricës së konfuzionit, learning curves, grafeve krahasuese dhe raporteve përmbledhëse.
+5. Kontrollohet balanca e klasave vetëm në training split.
+6. Nëse është e nevojshme, aplikohet SMOTE ose ADASYN vetëm në train.
+7. Trajnohen 6 algoritme supervised me `GridSearchCV`.
+8. Ekzekutohen 2 algoritme unsupervised për analizë krahasuese.
+9. Gjenerohen matricat e konfuzionit, grafet krahasuese, learning curves dhe raporte përmbledhëse.
 
-Ky organizim ndjek praktikën e mirë të Machine Learning, sepse test set-i ruhet i paprekur, preprocessing mësohet nga train set-i dhe krahasimi i modeleve kryhet mbi të njëjtën bazë testimi.
+Ky organizim ndjek praktikën e mirë të Machine Learning sepse:
+- test set-i ruhet i paprekur deri në fund,
+- preprocessing mësohet nga train set-i,
+- balancimi, nëse do të aplikohej, do të prekte vetëm train set-in,
+- dhe të gjitha modelet testohen mbi të njëjtin test set për krahasim të drejtë.
 
-### Ndarja e të dhënave dhe preprocessing
+---
+
+## Ndarja e të dhënave dhe preprocessing
 Në run-in aktual janë përdorur këto dimensione:
-- Train raw: 1,240 rreshta x 19 kolona
-- Test raw: 310 rreshta x 19 kolona
-- Train processed: 1,240 rreshta x 25 veçori
+- Train raw: `1240` rreshta x `19` kolona
+- Test raw: `310` rreshta x `19` kolona
+- Train processed: `1240` rreshta x `25` veçori
 
 Shpërndarja e klasave në test set:
 - `Medium`: 106
 - `High`: 105
 - `Low`: 99
 
-Përdorimi i `stratify=y` ishte i rëndësishëm për të ruajtur raportin e klasave ndërmjet train dhe test. `StandardScaler` u përdor sepse algoritme si Logistic Regression, SVM dhe MLP janë të ndjeshme ndaj shkallës së kolonave numerike. `OneHotEncoder` u përdor për kolonat kategoriale në mënyrë që ato të transformohen në formë numerike pa krijuar rend artificial ndërmjet kategorive.
+### Pse u përdor `train_test_split` me `stratify=y`?
+Stratifikimi siguron që raporti i klasave të ruhet afërsisht i njëjtë në train dhe test. Kjo është e rëndësishme sepse:
+- e bën evaluimin më të drejtë,
+- shmang një test set me shpërndarje të shtrembëruar,
+- dhe ruan stabilitetin e krahasimit ndërmjet modeleve.
 
-Balancimi u kontrollua pas train/test split, por në këtë run u kalua sepse train split ishte tashmë mjaft i balancuar. Kjo është e rëndësishme sepse shmang krijimin e të dhënave sintetike kur nuk ka nevojë reale për to.
+### Pse u përdor `StandardScaler`?
+Standardizimi ishte i domosdoshëm për kolonat numerike sepse algoritmet si:
+- Logistic Regression,
+- SVM,
+- dhe MLP
 
-### Strategjia e evaluimit
+janë të ndjeshme ndaj shkallës së veçorive. Pa standardizim, kolonat me vlera më të mëdha numerike do të dominonin optimizimin.
+
+### Pse u përdor `OneHotEncoder`?
+Kolonat kategoriale si `Data source` dhe `Data estimation method` nuk mund të përdoren drejtpërdrejt nga shumica e algoritmeve. One-hot encoding i kthen në forma numerike binare pa krijuar rend artificial ndërmjet kategorive.
+
+### Pse nuk u përdor SMOTE në këtë run?
+Balancimi u kontrollua pasi u bë train/test split. Në këtë run, train split rezultoi tashmë mjaft i balancuar, prandaj pipeline-i e kaloi këtë hap me:
+
+- `Skipped (already balanced)`
+
+Kjo është e rëndësishme sepse shmang krijimin e të dhënave sintetike kur nuk ka nevojë reale për to.
+
+---
+
+## Algoritmet e përdorura
+
+| # | Algoritmi | Lloji | Qëllimi |
+|---|-----------|-------|----------|
+| 1 | Logistic Regression | Supervised – Klasifikim | Baseline linear për të testuar ndarjen lineare të klasave |
+| 2 | Random Forest | Supervised – Klasifikim | Model jo-linear për të dhëna tabulare dhe analizë të rëndësisë së veçorive |
+| 3 | Gradient Boosting | Supervised – Klasifikim | Model boosting për performancë të lartë në të dhëna tabulare |
+| 4 | SVM (Linear) | Supervised – Klasifikim | Testim i kufijve linearë të vendimmarrjes |
+| 5 | SVM (RBF) | Supervised – Klasifikim | Testim i kufijve jolinearë të vendimmarrjes |
+| 6 | Neural Network (MLP) | Supervised – Klasifikim | Model neuronik për krahasim me algoritmet klasike |
+| 7 | K-Means | Unsupervised | Zbulimi i klasterëve natyralë pa etiketa |
+| 8 | Agglomerative Clustering | Unsupervised | Krahasim i clustering hierarkik me K-Means |
+
+---
+
+## Arsyetimi për zgjedhjen e algoritmeve
+
+### Algoritmet supervised
+
+**1. Logistic Regression**
+- U përfshi si model bazë linear.
+- Është i interpretuar lehtë dhe shërben si pikë reference.
+- Ndihmon për të testuar nëse klasat ndahen mirë edhe me kufij linearë.
+
+**2. Random Forest**
+- Është shumë i përshtatshëm për të dhëna tabulare.
+- Kap marrëdhënie jolineare mes veçorive.
+- Është më robust ndaj ndërveprimeve të ndërlikuara dhe jep `feature importance`, çka është e dobishme për interpretim.
+
+**3. Gradient Boosting**
+- U përdor si model boosting i fuqishëm për të dhëna tabulare.
+- Ndërton pemë sekuencialisht duke korrigjuar gabimet e mëparshme.
+- Shërben si krahasim i drejtpërdrejtë me Random Forest.
+
+**4. SVM (Linear)**
+- U përdor për të testuar nëse problemi ka strukturë lineare të mjaftueshme.
+- Jep krahasim të mirë me Logistic Regression.
+
+**5. SVM (RBF)**
+- U përfshi për të testuar nëse kufijtë ndërmjet klasave janë më shumë jolinearë.
+- Është më fleksibil se varianti linear, prandaj përdoret si krahasim metodologjik.
+
+**6. Neural Network (MLP)**
+- U përfshi sepse rrjetat neurale janë pjesë qendrore e lëndës.
+- Shërben për të testuar nëse një model më fleksibil neuronik sjell përmirësim.
+- Gjeneron edhe loss curve dhe validation curve për diskutim teorik.
+
+### Algoritmet unsupervised
+
+**7. K-Means**
+- U përdor për të parë nëse të dhënat formojnë grupe natyrale pa etiketa.
+- Është efikas dhe i interpretuar lehtë në të dhëna tabulare.
+
+**8. Agglomerative Clustering**
+- U përdor si alternativë hierarkike ndaj K-Means.
+- Ndihmon për të parë nëse një qasje tjetër grupimi jep strukturë më të qartë.
+
+---
+
+## Strategjia e evaluimit
 Për secilin model supervised u përdor:
 - `GridSearchCV`
 - `3-fold cross-validation`
 - metrika kryesore e optimizimit: `F1 (macro)`
 
-`GridSearchCV` u zgjodh sepse lejon testimin sistematik të kombinimeve të hiperparametrave dhe zgjedhjen e konfigurimit më të mirë në mënyrë objektive. `F1 (macro)` u përdor sepse është më e përshtatshme sesa vetëm accuracy në probleme multiklasore, pasi trajton të gjitha klasat në mënyrë të barabartë.
+### Pse `GridSearchCV`?
+Grid search teston kombinime të ndryshme hiperparametrash dhe zgjedh konfigurimin më të mirë sipas një metrike të caktuar. Kjo e bën krahasimin:
+- më objektiv,
+- më sistematik,
+- dhe më të besueshëm sesa zgjedhja manuale.
 
-### Algoritmet e aplikuara dhe arsyetimi i zgjedhjes
-Në këtë fazë u trajnuan 6 algoritme supervised:
-- **Logistic Regression:** si model bazë linear dhe i interpretuar lehtë
-- **Random Forest:** për kapjen e marrëdhënieve jolineare dhe analizën e rëndësisë së veçorive
-- **Gradient Boosting:** si model shumë i fuqishëm për të dhëna tabulare
-- **SVM (Linear):** për të testuar ndarjen lineare të klasave
-- **SVM (RBF):** për të testuar nëse kufijtë ndërmjet klasave janë më jolinearë
-- **Neural Network (MLP):** për të përfshirë qasjen neuronale dhe për të analizuar konvergjencën e trajnimit
+### Pse `F1 (macro)` dhe jo vetëm accuracy?
+Accuracy është metrikë e dobishme, por nuk jep gjithmonë pamje të plotë në klasifikim multiklasor. `F1 (macro)`:
+- llogaritet veçmas për secilën klasë,
+- pastaj i trajton klasat në mënyrë të barabartë,
+- dhe është më e përshtatshme kur duam performancë të balancuar në të gjitha klasat.
 
-Gjithashtu u përdorën 2 algoritme unsupervised:
-- **K-Means**
-- **Agglomerative Clustering**
+---
 
-Këto u përdorën për të testuar nëse klasat formojnë grupime natyrale edhe pa etiketa.
+## Rezultatet e evaluimit
 
-### Rezultatet kryesore supervised
-| Model | Best Params | Accuracy | F1 (macro) |
-|---|---|---:|---:|
-| Logistic Regression | `{"C": 10}` | 0.9742 | 0.9741 |
-| Random Forest | `{"max_depth": 10, "n_estimators": 100}` | 0.9903 | 0.9904 |
-| Gradient Boosting | `{"learning_rate": 0.05, "max_depth": 3, "n_estimators": 100}` | 0.9903 | 0.9904 |
-| SVM (Linear) | `{"C": 10}` | 0.9710 | 0.9709 |
-| SVM (RBF) | `{"C": 10, "gamma": "auto"}` | 0.9645 | 0.9645 |
-| Neural Network (MLP) | `{"alpha": 0.0001, "hidden_layer_sizes": [128, 64]}` | 0.9710 | 0.9712 |
+### Modelet supervised – krahasimi kryesor
+| Model | Best Params | CV F1 (macro) | Accuracy | Precision (macro) | Recall (macro) | F1 (macro) |
+|---|---|---:|---:|---:|---:|---:|
+| Logistic Regression | `{"C": 10}` | 0.9847 | 0.9742 | 0.9742 | 0.9744 | 0.9741 |
+| Random Forest | `{"max_depth": 10, "n_estimators": 100}` | 0.9968 | 0.9903 | 0.9903 | 0.9905 | 0.9904 |
+| Gradient Boosting | `{"learning_rate": 0.05, "max_depth": 3, "n_estimators": 100}` | 0.9984 | 0.9903 | 0.9904 | 0.9905 | 0.9904 |
+| SVM (Linear) | `{"C": 10}` | 0.9863 | 0.9710 | 0.9712 | 0.9713 | 0.9709 |
+| SVM (RBF) | `{"C": 10, "gamma": "auto"}` | 0.9599 | 0.9645 | 0.9646 | 0.9649 | 0.9645 |
+| Neural Network (MLP) | `{"alpha": 0.0001, "hidden_layer_sizes": [128, 64]}` | 0.9766 | 0.9710 | 0.9716 | 0.9712 | 0.9712 |
 
 ### Diskutimi i rezultateve supervised
-Nga rezultatet vërehet se të gjithë modelet supervised performuan shumë mirë, me `F1 (macro)` mbi `0.96`. Kjo tregon se veçoritë e ndërtuara në Fazën I janë të fuqishme dhe informative.
-
-Modelet më të mira rezultuan:
-- `Random Forest`
-- `Gradient Boosting`
+Nga rezultatet vërehen disa përfundime të rëndësishme:
+- Të gjithë modelet supervised performuan mirë, me `F1 (macro)` mbi `0.96`.
+- Kjo tregon se veçoritë e krijuara në Fazën I janë të fuqishme dhe informative.
+- Dy modelet më të mira ishin:
+  - `Random Forest`
+  - `Gradient Boosting`
 
 Të dy arritën:
 - `Accuracy = 0.9903`
 - `F1 (macro) = 0.9904`
 
-Kjo sugjeron se të dhënat përmbajnë marrëdhënie jolineare që modelet me pemë i kapin shumë mirë. Nga ana tjetër:
-- Logistic Regression dhe SVM Linear performuan shumë mirë, çka tregon se një pjesë e strukturës është lineare
-- SVM RBF doli më i dobët se varianti linear, gjë që tregon se fleksibiliteti shtesë nuk solli përfitim real
-- MLP performoi mirë, por nuk e kaloi performancën e modeleve me pemë, gjë që është tipike për shumë probleme tabulare
+Ky rezultat sugjeron se të dhënat kanë strukturë jolineare që modelet me pemë e kapin shumë mirë.
 
-Nga classification reports vërehet se klasa `Medium` është pak më sfiduese se `High` dhe `Low`. Kjo është logjike sepse `Medium` përfaqëson raste kufitare ndërmjet dy klasave të tjera.
+Nga ana tjetër:
+- Logistic Regression dhe SVM Linear performuan shumë mirë, çka tregon se ekziston edhe komponent linear në problem.
+- SVM RBF ishte më i dobëti ndër modelet supervised, gjë që tregon se fleksibiliteti shtesë nuk solli përmirësim real.
+- MLP performoi mirë, por nuk e kaloi Random Forest dhe Gradient Boosting. Kjo është tipike për shumë probleme tabulare ku modelet me pemë shpesh dalin më të forta sesa rrjetat neurale.
 
-### Rezultatet unsupervised
+Nga classification reports vërehet se klasa `Medium` është më sfiduese se `High` dhe `Low`. Kjo është logjike sepse përfaqëson raste kufitare ndërmjet dy klasave të tjera.
+
+### Raportet sipas klasave
+Nga `classification_reports.txt` dallohet:
+- `High` dhe `Low` parashikohen pak më lehtë
+- `Medium` ka më shumë konfuzion në pothuajse të gjitha modelet
+
+Kjo tregon se gabimet nuk janë të rastësishme, por lidhen me strukturën e problemit dhe afërsinë ndërmjet klasave.
+
+### Modelet unsupervised
 - K-Means silhouette = `0.2110`
 - Agglomerative silhouette = `0.1958`
 
-Këto vlera janë relativisht të ulëta dhe tregojnë se klasat nuk formojnë klasterë shumë të fortë në mënyrë natyrale. Kjo nënkupton se problemi është më i përshtatshëm për qasje supervised sesa për clustering pa etiketa.
+### Diskutimi i rezultateve unsupervised
+Këto vlera janë relativisht të ulëta dhe tregojnë se klasat nuk formojnë klasterë shumë të fortë natyralë pa etiketa. Kjo do të thotë se:
+- qasja supervised është më e përshtatshme për këtë problem,
+- ndërsa clustering përdoret më tepër për analizë ndihmëse dhe jo si zgjidhje kryesore.
 
-### Krahasimi i grafeve të gjeneruara
-Në Fazën II janë gjeneruar grafe që nuk shërbejnë vetëm si ilustrim, por si pjesë e argumentimit:
-- `algorithm_comparison.png`: krahasimi vizual i performancës së modeleve supervised
+---
+
+## Diskutimi i grafeve të gjeneruara
+Në Fazën II janë gjeneruar grafe që mbështesin argumentimin:
+- `algorithm_comparison.png`: krahasimi i performancës së modeleve supervised
 - `feature_importance_rf.png`: rëndësia e veçorive sipas Random Forest
 - `learning_curves.png`: analiza e overfitting/underfitting
-- `regularization_effect.png`: efekti i parametrit `C` në Logistic Regression
+- `regularization_effect.png`: efekti i parametrit `C` te Logistic Regression
 - `mlp_loss_curve.png` dhe `mlp_validation_curve.png`: konvergjenca dhe stabiliteti i MLP
-- `elbow_and_silhouette.png`: vlerësimi i clustering për vlera të ndryshme të `k`
+- `elbow_and_silhouette.png`: sjellja e clustering për vlera të ndryshme të `k`
 - `pca_clusters_comparison.png`: krahasimi vizual i clustering me etiketat reale
-- `confusion_matrix_*.png`: analiza e gabimeve sipas klasave për secilin model
+- `confusion_matrix_*.png`: analiza e gabimeve për secilin model
 
-Këto grafe ndihmojnë në mbështetjen vizuale të konkluzioneve dhe e bëjnë analizën më të argumentuar dhe më të kuptueshme.
+Këto grafe janë të rëndësishme sepse e bëjnë diskutimin më të argumentuar dhe më të kuptueshëm vizualisht.
 
-### Përfundimi i Fazës II
+---
+
+## Përfundimi i Fazës II
 Nga e gjithë analiza mund të nxirren këto përfundime:
-1. Dataseti final nga Faza I është i përshtatshëm dhe cilësor për klasifikim.
+1. Dataseti final i Fazës I është i përshtatshëm dhe cilësor për klasifikim.
 2. Të gjitha modelet supervised arritën performancë të lartë.
 3. `Random Forest` dhe `Gradient Boosting` ishin modelet më të forta.
 4. Modelet lineare treguan se ekziston edhe strukturë lineare në problem.
