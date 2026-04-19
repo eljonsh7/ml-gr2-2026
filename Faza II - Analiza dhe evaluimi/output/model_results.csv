@@ -1,0 +1,7 @@
+Model,Best Params,CV F1 (macro),Accuracy,Precision (macro),Recall (macro),F1 (macro),F1 (weighted)
+Logistic Regression,"{""C"": 10}",0.9847,0.9742,0.9742,0.9744,0.9741,0.9741
+Random Forest,"{""max_depth"": 10, ""n_estimators"": 100}",0.9968,0.9903,0.9903,0.9905,0.9904,0.9903
+Gradient Boosting,"{""learning_rate"": 0.05, ""max_depth"": 3, ""n_estimators"": 100}",0.9984,0.9903,0.9904,0.9905,0.9904,0.9903
+SVM (Linear),"{""C"": 10}",0.9863,0.971,0.9712,0.9713,0.9709,0.9708
+SVM (RBF),"{""C"": 10, ""gamma"": ""auto""}",0.9599,0.9645,0.9646,0.9649,0.9645,0.9643
+Neural Network (MLP),"{""alpha"": 0.0001, ""hidden_layer_sizes"": [128, 64]}",0.9766,0.971,0.9716,0.9712,0.9712,0.9709
