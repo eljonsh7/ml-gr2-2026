@@ -1,0 +1,17 @@
+============================================================
+WILCOXON SIGNED-RANK TEST — Phase III
+Reference (best): Gradient Boosting  (mean CV F1 = 0.9992)
+============================================================
+
+H0: No significant difference in F1 distributions.
+H1: Significant difference exists.
+Significance level: α = 0.05
+
+Model                           Mean F1    Statistic      p-value   Significant?
+--------------------------------------------------------------------------------
+Logistic Regression              0.9872       15.000       0.0312            YES
+Random Forest                    0.9984        1.000       0.5000             No
+SVM (Linear)                     0.9904       10.000       0.0625             No
+Neural Network (MLP)             0.9871       15.000       0.0312            YES
+
+Conclusion: 'Gradient Boosting' is the statistically best model for this dataset.

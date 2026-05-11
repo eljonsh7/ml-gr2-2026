@@ -7,8 +7,7 @@
 
 **Studentët (Grupi 2):**  
 - Brahim Sylejmani
-- Eljon Shala
-- Altin Morina
+- Eljon Shala``
 
 ---
 
@@ -586,8 +585,200 @@ Pra, Faza II tregoi jo vetëm se mund të ndërtohen modele shumë të sakta pë
 Dokumentimi i plotë i kësaj faze gjendet te:
 - `./Faza II - Analiza dhe evaluimi/README.md`
 
-## Faza III: Interpretueshmëria dhe Optimizimi (Në vijim)
-Analiza e rëndësisë së veçorive, interpretimi i vendimeve të modelit dhe optimizimi i parametrave finalë.
+## Faza III: Optimizimi dhe Fine-Tuning i Modeleve
+
+## Qëllimi i Fazës III
+Faza III merr pesë modelet më të mira nga Faza II, zgjeron hapësirat e hiperparametrave dhe identifikon një model të vetëm fitues me mbështetje statistikore. SVM (RBF) hiqet plotësisht — ishte modeli më i dobët i Fazës II me CV F1 = 0.9599 dhe fleksibiliteti i tij shtesë nuk solli asnjë përfitim real.
+
+Ndryshimet kryesore metodologjike:
+- `GridSearchCV` → `RandomizedSearchCV` me grida të gjera parametrash
+- 3-fold CV → **5-fold CV** për vlerësim më të besueshëm
+- **Zgjedhja e veçorive** me pragje importancë RF (25 → 9 veçori)
+- Shtim i metrikës **ROC-AUC (macro, OvR)**
+- **Testi Wilcoxon signed-rank** për konfirmim statistikor të fituesit
+- Deklarim i **modelit të vetëm final**
 
 ---
-*(Shënim: Grupi duhet të zëvendësojë emrat e tyre më lart.)*
+
+## Struktura e Fazës III
+```text
+Faza III/
+├── README.md
+├── phase3_pipeline.py
+└── output/
+    ├── model_results_phase3.csv
+    ├── comparison_phase2_vs_phase3.csv
+    ├── classification_reports_phase3.txt
+    ├── wilcoxon_results.txt
+    ├── final_report_phase3.md
+    ├── algorithm_comparison_phase3.png
+    ├── phase2_vs_phase3_comparison.png
+    ├── feature_selection.png
+    ├── feature_importance_phase3.png
+    ├── learning_curves_phase3.png
+    ├── roc_auc_curves_phase3.png
+    ├── calibration_curves_phase3.png
+    └── confusion_matrix_*.png
+```
+
+---
+
+## Dataseti hyrës dhe zgjedhja e veçorive
+
+Inputi mbetet i njëjtë me Fazën II:
+- `./Faza I - Përgatitja e Modelit/Hapi 7 - Finalizimi i Datasetit/feature_engineered_dataset.csv`
+
+Megjithatë, Faza III aplikon **zgjedhje veçorish** para trajnimit:
+- Trajnohet RF i shpejtë (100 pemë) mbi train set-in e procesuar
+- Llogariten importancat e veçorive bazuar në uljen mesatare të papastërtisë Gini
+- Ruhen vetëm veçoritë me importancë ≥ 5% × mesatarja e importancave
+- **Rezultati: 25 → 9 veçori të mbajtura**
+
+Kjo heq veçoritë me kontribut gati-zero, redukton zhurmën dhe shpejton trajnimin pa humbur performancë.
+
+### Ndarja e të dhënave
+- `RANDOM_STATE = 42` — e njëjtë me Fazën II, garanton ndarje identike train/test
+- Train: `1,240` rreshta | Test: `310` rreshta
+- Pas preprocessing: `25` veçori → pas zgjedhjes: `9` veçori
+
+---
+
+## Algoritmet e përdorura
+
+| # | Algoritmi | Faza II | Faza III | Arsyeja |
+|---|---|---|---|---|
+| 1 | Logistic Regression | ✅ | ✅ | Baseline linear i ruajtur |
+| 2 | Random Forest | ✅ | ✅ | Performancë e lartë, ruhet |
+| 3 | Gradient Boosting | ✅ | ✅ | Performancë e lartë, ruhet |
+| 4 | SVM (Linear) | ✅ | ✅ | Ruhet, rangu i C zgjerohet ndjeshëm |
+| 5 | SVM (RBF) | ✅ | ❌ | **Hiqet** — CV F1=0.9599, më i dobëti |
+| 6 | Neural Network (MLP) | ✅ | ✅ | Ruhet, arkitektura zgjerohet |
+
+---
+
+## Strategjia e kërkimit të hiperparametrave
+
+### RandomizedSearchCV
+Në vend të testimit exhaustiv (GridSearchCV), RandomizedSearchCV kampionon $n\_iter$ kombinime rastësisht nga hapësira e plotë e parametrave:
+
+- Gradient Boosting: 1,200 kombinime të mundshme → testohen 30
+- Random Forest: 540 kombinime → testohen 30
+- MLP: 60 kombinime → testohen 30
+- Logistic Regression: 11 kombinime → testohen të gjitha (exhaustiv)
+- SVM Linear: 9 kombinime → testohen të gjitha (exhaustiv)
+
+Kjo qasje shploron hapësira shumë herë më të mëdha sesa Faza II brenda kohës së ngjashme të ekzekutimit.
+
+### Gridi i zgjeruar i parametrave
+
+| Modeli | Parametri (Faza II) | Parametri (Faza III) |
+|---|---|---|
+| Logistic Regression | `C: [0.01, 0.1, 1, 10]` | `C: [0.001…100]` (11 vlera) |
+| Random Forest | `n_estimators: [100,200]` | `[100,150,200,300,500]` + `min_samples_leaf`, `max_features` |
+| Gradient Boosting | `lr: [0.05,0.1]` | `[0.01,0.03,0.05,0.1,0.2]` + `subsample` |
+| SVM Linear | `C: [0.1,1,10]` | `C: [0.001…100]` (9 vlera) |
+| MLP | `hidden: [(64,32),(128,64)]` | + `(256,128)`, `(128,64,32)`, `(256,128,64)` + `learning_rate_init` |
+
+### 5-fold Cross-Validation
+Upgraduar nga 3-fold për vlerësim me bias më të ulët dhe besueshmëri më të lartë — i njëjti objekt `StratifiedKFold` përdoret për të gjitha modelet, duke garantuar fold-et identike dhe krahasim të drejtë.
+
+---
+
+## Rezultatet e Fazës III
+
+### Krahasimi kryesor
+
+| Model | CV F1 (macro) | Accuracy | Precision | Recall | F1 (macro) | ROC-AUC |
+|---|---:|---:|---:|---:|---:|---:|
+| **Gradient Boosting** | **0.9992** | 0.9903 | 0.9904 | 0.9905 | 0.9904 | **0.9999** |
+| Random Forest | 0.9984 | 0.9903 | 0.9904 | 0.9905 | 0.9904 | 0.9999 |
+| SVM (Linear) | 0.9904 | 0.9839 | 0.9837 | 0.9840 | 0.9838 | 0.9995 |
+| Logistic Regression | 0.9872 | 0.9806 | 0.9806 | 0.9807 | 0.9806 | 0.9993 |
+| Neural Network (MLP) | 0.9871 | 0.9742 | 0.9745 | 0.9746 | 0.9743 | 0.9989 |
+
+### Parametrat më të mirë të gjetur
+
+| Model | Parametrat më të mirë |
+|---|---|
+| Gradient Boosting | `n_estimators=500, lr=0.2, max_depth=5, subsample=0.9, min_samples_split=5` |
+| Random Forest | `n_estimators=100, max_depth=8, min_samples_leaf=4, max_features="log2"` |
+| SVM (Linear) | `C=50` |
+| Logistic Regression | `C=100` |
+| Neural Network (MLP) | `hidden=(64,32), alpha=0.001, lr_init=0.005` |
+
+### Raportet sipas klasave — modeli fitues (Gradient Boosting)
+
+| Klasa | Precision | Recall | F1 | Mbështetja |
+|---|---|---|---|---|
+| High | 1.00 | 0.98 | 0.99 | 105 |
+| Low | 0.99 | 1.00 | 0.99 | 99 |
+| Medium | 0.98 | 0.99 | 0.99 | 106 |
+
+---
+
+## Testimi Statistikor — Wilcoxon Signed-Rank
+
+Testi Wilcoxon (njëanësor, α = 0.05) mbi 5 fold-et CV konfirmon nëse Gradient Boosting është **statistikisht superior** ndaj modeleve të tjera:
+
+| Krahasimi | W+ | p-vlerë | Domethënës? |
+|---|---|---|---|
+| GB vs Logistic Regression | 15.0 | 0.0312 | **PO** |
+| GB vs Neural Network (MLP) | 15.0 | 0.0312 | **PO** |
+| GB vs SVM (Linear) | 10.0 | 0.0625 | Jo (kufitar) |
+| GB vs Random Forest | 1.0 | 0.5000 | Jo (barabar praktikisht) |
+
+**Gradient Boosting** deklarohet modeli final pasi ka CV F1 më të lartë (0.9992) dhe është statistikisht superior ndaj dy modeleve të dobëta.
+
+---
+
+## Krahasimi Faza II vs Faza III
+
+| Model | Ph2 F1 | Ph3 F1 | Delta | Ph2 CV F1 | Ph3 CV F1 |
+|---|---:|---:|---:|---:|---:|
+| Logistic Regression | 0.9741 | 0.9806 | **+0.0065** | 0.9847 | 0.9872 |
+| Random Forest | 0.9904 | 0.9904 | +0.0000 | 0.9968 | 0.9984 |
+| Gradient Boosting | 0.9904 | 0.9904 | +0.0000 | 0.9984 | **0.9992** |
+| SVM (Linear) | 0.9709 | 0.9838 | **+0.0129** | 0.9863 | 0.9904 |
+| Neural Network (MLP) | 0.9712 | 0.9743 | **+0.0031** | 0.9766 | 0.9871 |
+| SVM (RBF) | 0.9645 | — *hiqet* | — | 0.9599 | — |
+
+**SVM Linear pati përfitimin më të madh (+0.0129)** — optimumi C=50 ishte jashtë gridit të Fazës II (max C=10) plotësisht. Asnjë model nuk u keqësua.
+
+---
+
+## Diskutimi i grafeve të gjeneruara
+
+- `algorithm_comparison_phase3.png`: krahasimi i 5 modeleve me 4 metrika
+- `phase2_vs_phase3_comparison.png`: shtylla krah-për-krah me delta-t të shënuara
+- `feature_selection.png`: importancat e veçorive (blu = mbajtur, kuq = hequr) me vijën e pragut
+- `feature_importance_phase3.png`: top veçori sipas RF pas zgjedhjes
+- `learning_curves_phase3.png`: kurba trajnimi vs. validimi (parametrat finalë të RF)
+- `roc_auc_curves_phase3.png`: kurba ROC makro-mesatare për të 5 modelet
+- `calibration_curves_phase3.png`: probabiliteti i parashikuar vs. fraksioni aktual sipas klasës
+- `wilcoxon_results.txt`: raporti i plotë i testit statistikor
+- `confusion_matrix_*.png`: 5 matrica konfuzioni (një për model)
+
+---
+
+## Përfundimi i Fazës III
+
+```
+Modeli Final   : Gradient Boosting
+Parametrat     : n_estimators=500, learning_rate=0.2, max_depth=5,
+                 subsample=0.9, min_samples_split=5
+CV F1 (macro)  : 0.9992
+Accuracy       : 0.9903  (307/310 të sakta)
+F1 (macro)     : 0.9904
+ROC-AUC (macro): 0.9999
+```
+
+Faza III konfirmoi se:
+1. Zgjerimi i hapësirës së hiperparametrave solli përmirësim të matur për çdo model
+2. Gradient Boosting është fitues i qartë me CV F1 = 0.9992 dhe superioriteti i tij mbi dy modele është statistikisht i konfirmuar
+3. Random Forest dhe GB mbeten praktikisht të barabartë në test set — dallimi shihet vetëm në CV
+4. Dataseti i Fazës I dhe inxhinieria e veçorive ishin të cilësisë së lartë — konfirmohet përfundimisht
+
+Dokumentimi i plotë i kësaj faze gjendet te:
+- `./Faza III/README.md`
+
+---

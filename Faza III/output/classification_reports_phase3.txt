@@ -1,0 +1,79 @@
+============================================================
+Logistic Regression
+Best params: {'C': 100}
+CV F1: 0.9872
+============================================================
+              precision    recall  f1-score   support
+
+        High       1.00      0.99      1.00       105
+         Low       0.97      0.98      0.97        99
+      Medium       0.97      0.97      0.97       106
+
+    accuracy                           0.98       310
+   macro avg       0.98      0.98      0.98       310
+weighted avg       0.98      0.98      0.98       310
+
+
+============================================================
+Random Forest
+Best params: {'n_estimators': 100, 'min_samples_split': 2, 'min_samples_leaf': 4, 'max_features': 'log2', 'max_depth': 8}
+CV F1: 0.9984
+============================================================
+              precision    recall  f1-score   support
+
+        High       1.00      0.98      0.99       105
+         Low       0.99      1.00      0.99        99
+      Medium       0.98      0.99      0.99       106
+
+    accuracy                           0.99       310
+   macro avg       0.99      0.99      0.99       310
+weighted avg       0.99      0.99      0.99       310
+
+
+============================================================
+Gradient Boosting
+Best params: {'subsample': 0.9, 'n_estimators': 500, 'min_samples_split': 5, 'max_depth': 5, 'learning_rate': 0.2}
+CV F1: 0.9992
+============================================================
+              precision    recall  f1-score   support
+
+        High       1.00      0.98      0.99       105
+         Low       0.99      1.00      0.99        99
+      Medium       0.98      0.99      0.99       106
+
+    accuracy                           0.99       310
+   macro avg       0.99      0.99      0.99       310
+weighted avg       0.99      0.99      0.99       310
+
+
+============================================================
+SVM (Linear)
+Best params: {'C': 50}
+CV F1: 0.9904
+============================================================
+              precision    recall  f1-score   support
+
+        High       1.00      0.99      1.00       105
+         Low       0.97      0.99      0.98        99
+      Medium       0.98      0.97      0.98       106
+
+    accuracy                           0.98       310
+   macro avg       0.98      0.98      0.98       310
+weighted avg       0.98      0.98      0.98       310
+
+
+============================================================
+Neural Network (MLP)
+Best params: {'learning_rate_init': 0.005, 'hidden_layer_sizes': (64, 32), 'alpha': 0.001}
+CV F1: 0.9871
+============================================================
+              precision    recall  f1-score   support
+
+        High       0.96      0.99      0.98       105
+         Low       0.98      0.99      0.98        99
+      Medium       0.98      0.94      0.96       106
+
+    accuracy                           0.97       310
+   macro avg       0.97      0.97      0.97       310
+weighted avg       0.97      0.97      0.97       310
+

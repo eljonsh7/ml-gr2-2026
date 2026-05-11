@@ -1,0 +1,6 @@
+Model,Ph2 CV F1,Ph3 CV F1,Ph2 Accuracy,Ph3 Accuracy,Ph2 F1 (macro),Ph3 F1 (macro),Delta F1
+Logistic Regression,0.9847,0.9872,0.9742,0.9806,0.9741,0.9806,+0.0065
+Random Forest,0.9968,0.9984,0.9903,0.9903,0.9904,0.9904,+0.0
+Gradient Boosting,0.9984,0.9992,0.9903,0.9903,0.9904,0.9904,+0.0
+SVM (Linear),0.9863,0.9904,0.971,0.9839,0.9709,0.9838,+0.0129
+Neural Network (MLP),0.9766,0.9871,0.971,0.9742,0.9712,0.9743,+0.0031

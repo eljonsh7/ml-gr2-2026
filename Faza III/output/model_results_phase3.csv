@@ -1,0 +1,6 @@
+Model,Best Params,CV F1 (macro),Accuracy,Precision (macro),Recall (macro),F1 (macro),F1 (weighted),ROC-AUC (macro)
+Logistic Regression,"{""C"": 100}",0.9872,0.9806,0.9806,0.9807,0.9806,0.9807,0.9993
+Random Forest,"{""n_estimators"": 100, ""min_samples_split"": 2, ""min_samples_leaf"": 4, ""max_features"": ""log2"", ""max_depth"": 8}",0.9984,0.9903,0.9904,0.9905,0.9904,0.9903,0.9999
+Gradient Boosting,"{""subsample"": 0.9, ""n_estimators"": 500, ""min_samples_split"": 5, ""max_depth"": 5, ""learning_rate"": 0.2}",0.9992,0.9903,0.9904,0.9905,0.9904,0.9903,0.9999
+SVM (Linear),"{""C"": 50}",0.9904,0.9839,0.9837,0.984,0.9838,0.9839,0.9995
+Neural Network (MLP),"{""learning_rate_init"": 0.005, ""hidden_layer_sizes"": [64, 32], ""alpha"": 0.001}",0.9871,0.9742,0.9745,0.9746,0.9743,0.9741,0.9989
