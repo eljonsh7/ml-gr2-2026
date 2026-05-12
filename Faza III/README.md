@@ -824,6 +824,24 @@ ROC-AUC (macro) : 0.9999
 
 ---
 
+## 15. Konkluzionet dhe Impakti i Projektit
+
+### Konkluzionet në lidhje me rezultatet
+Pas tre fazave të eksperimentimit intensiv, përfundojmë se modeli Gradient Boosting (dhe ngjashëm Random Forest) arrin të parashikojë me saktësi pothuajse perfekte (Accuracy 99.03%, F1 0.9992) varësinë thelbësore mes variablave (energjia e rinovueshme, koha, etj.) dhe nivelit ditor të karbonit në Kosovë. Modelet dëshmuan se zgjedhja e targetit në tre klasa dhe inxhinieria e veçorive në Fazën I kanë qenë jashtëzakonisht efikase, duke filtruar zhurmën (prej 25 veçori në 9 themelore). Faza III plotësoi me sukses këtë detyrë, jo thjesht numerikisht, por duke e lidhur atë me rëndësi statistikore.
+
+### Kontributi ynë unik (që të tjerët nuk e kanë dhënë)
+Kontributi ynë i drejtpërdrejtë është lidhja e ndërtimit të një master-dataseti të personalizuar të Kosovës (agreguar nga miliona rreshta të dhënash orare nga 2021-2025 në një regjistër ditor, të pastruar e funksional) dhe validimi i modeleve përmes rigorozitetit real statistikor (Testi Wilcoxon). Rrallëherë datasetet publike për sektorin e energjisë së Kosovës janë të kthyera në probleme standarde të klasifikimit multiklasor me inxhinieri të tillë të detajuar (si p.sh. carbon_intensity_gap). Ne nuk kemi zbatuar vetëm modelin; ne kemi krijuar terrenin dhe problemin, e kemi vërtetuar se modeli e zgjidh, pastaj dhe e kemi provuar ashpër këtë përmes testit statistikor. 
+
+### Si t'i lexojmë rezultatet, kujt i ndihmojnë dhe si?
+Këto rezultate tregojnë probabilitetin se cila normë karboni ditor (`High`, `Medium`, `Low`) pritet bazuar në inputet ditore.
+- **Kujt i ndihmojnë:** Ndihmojnë drejtpërdrejt institucionet e menaxhimit të rrjetit (si KOSTT), politikë-bërësit si dhe konsumatorët e mëdhenj (industritë) apo prosumer-at e energjisë solare në Kosovë.
+- **Si i ndihmojnë:** Mundësojnë gjenerimin e alarmeve të automatizuara ditore; për shembull aktivizimin e incentiva financiare (tarifave të ulëta) kur mjedisi theksohet si `Low` ose dërgimin e sinjaleve për kufizime në prodhimet ndotëse kur parashikohet `High` intensity, duke u lidhur drejtpërdrejt me planin dhe axhendën e gjelbërt të reduktimit të emetimeve.
+
+### Çka mund të bëhet në të ardhmen? (Future Work)
+Si zhvillime të së ardhmes, modeli ditor mund të ngushtohet në një version predikues 'Real-Time' që jep target për orën e radhës në vend të ditës së radhës. Modele të kalibruara mund të shtohen me analiza të kohës (Time-Series Forecasing me LSTM), dhe puna mund të pasurohet më shumë duke lidhur një API meteorologjike për të marrë atributet si era, ndriçimi i diellit apo rreshjet—faktorë që padiskutim do i jepnin përgjigje origjinës së variacionit të gjetur. Aplikimi imedat pastaj mund të behej integrimi i modeleve të fitura nga Faza III në ndonjë web/mobile-app ose dashboard ku mund të kyçen the palët e prekura drejtperdrejtë në këtë domen.
+
+---
+
 ## References
 
 - Breiman, L. (2001). *Random Forests*. Machine Learning, 45, 5–32.
