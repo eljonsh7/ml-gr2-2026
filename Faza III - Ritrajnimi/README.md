@@ -866,13 +866,13 @@ Njohja kryesore: kalimi nëpër një shteg të vetëm në pemën e vendimit tash
 
 #### Çfarë Tregojnë Grafet
 
-**Grafiku i shtylave të nevojës globale** (`shap_feature_importance.png`):
+**Grafiku i shtylave të nevojës globale** (shap_feature_importance):
 
 $$\text{Rëndësia}(j) = \frac{1}{n} \sum_{i=1}^{n} \frac{1}{K} \sum_{k=1}^{K} |\phi_j^{(k)}(\mathbf{x}_i)|$$
 
 Vlera mesatare absolute SHAP e mesatarizuar mbi mostra dhe klasa. Veçoritë me vlera të larta këtu i shtyjnë parashikimet larg bazës më fort, pavarësisht drejtimit.
 
-**Grafiku beeswarm** (`shap_beeswarm.png`):
+**Grafiku beeswarm** (shap_beeswarm):
 
 Për një klasë (p.sh., `High`), çdo pikë është një mostër testimi. Boshti x është vlera SHAP (pozitive = shtyn drejt `High`, negative = shtyn larg). Ngjyra kodon vlerën aktuale të veçorisë (e kuqe = e lartë, blu = e ulët). Ky grafik tregon:
 - Cilat veçori janë më diskriminuese
@@ -890,14 +890,6 @@ Për një klasë (p.sh., `High`), çdo pikë është një mostër testimi. Bosht
 | Trajton veçoritë e korreluara | Dobët            | Dobët                    | Më mirë |
 
 Rëndësia standarde Gini numëron sa shpesh përdoret një veçori dhe ulja mesatare e papastërtisë - mbivlerëson veçoritë e korreluara dhe nuk jep informacion mbi drejtimin. Vlerat SHAP janë unike dhe plotësojnë aksiomët e **efikasitetit**, **simetrisë**, **dummyt** dhe **additivitetit** nga teoria e lojërave.
-
-**Kontributi mesatar |SHAP| i secilës veçori (global) — modeli fitues:**
-
-![SHAP Feature Importance](output/shap_feature_importance.png)
-
-**Shpërndarja e vlerave SHAP për çdo mostër dhe veçori:**
-
-![SHAP Beeswarm](output/shap_beeswarm.png)
 
 ---
 
@@ -1058,8 +1050,6 @@ ROC-AUC (macro)       : 0.9999
 | Skedari | Çfarë tregon                                                | Pse ka rëndësi                                                                 |
 |---|-------------------------------------------------------------|--------------------------------------------------------------------------------|
 | `learning_curves_phase3.png` | F1 trajnimit vs. validimit me rritjen e madhësisë trajnuese | Diagnostikon bias-variancën; provon se modeli nuk mbi-përshtatet               |
-| `shap_feature_importance.png` | Mean \|SHAP\| për-veçori (global) - modeli më i mirë        | Nevojë e bazuar në teorinë e modelit; merr parasysh ndërveprimet dhe drejtimin |
-| `shap_beeswarm.png` | Vlerat SHAP për-mostër për një klasë - modeli më i mirë     | Tregon si shpjegohen mostrat individuale; zbulon outliers                      |
 | `yellowbrick_validation_curve.png` | F1 vs sweep i `learning_rate` për GB                        | Zbulon shkallën optimale të mësimit dhe ndjeshmërinë ndaj këtij hiperparametri |
 
 ---

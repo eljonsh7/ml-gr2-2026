@@ -619,8 +619,6 @@ Faza III - Ritrajnimi/
     ├── learning_curves_phase3.png
     ├── roc_auc_curves_phase3.png
     ├── calibration_curves_phase3.png
-    ├── shap_feature_importance.png
-    ├── shap_beeswarm.png
     ├── yellowbrick_validation_curve.png
     └── confusion_matrix_*.png
 ```
@@ -759,8 +757,6 @@ Testi Wilcoxon (njëanësor, α = 0.05) mbi 5 fold-et CV konfirmon nëse Gradien
 - `learning_curves_phase3.png`: lakorja trajnimi vs. validimi (parametrat finalë të RF)
 - `roc_auc_curves_phase3.png`: lakorja ROC makro-mesatare për të 5 modelet
 - `calibration_curves_phase3.png`: probabiliteti i parashikuar vs. fraksioni aktual sipas klasës
-- `shap_feature_importance.png`: kontributi mesatar |SHAP| i secilës veçori — pse modeli vendos kështu
-- `shap_beeswarm.png`: shpërndarja e vlerave SHAP për çdo mostër dhe veçori (klasa e parë)
 - `yellowbrick_validation_curve.png`: lakorja e validimit vs. `learning_rate` — ndjeshmëria ndaj hiperparametrit kryesor (sklearn fallback, Yellowbrick nuk suporton Python 3.14)
 - `wilcoxon_results.txt`: raporti i plotë i testit Wilcoxon (krahasim CV fold-to-fold)
 - `mcnemar_results.txt`: testi McNemar — krahasim i gabimeve individuale Ph2 vs Ph3 (e njëjta test set)
@@ -811,10 +807,6 @@ Testi Wilcoxon (njëanësor, α = 0.05) mbi 5 fold-et CV konfirmon nëse Gradien
 ![Yellowbrick Validation Curve](Faza%20III%20-%20Ritrajnimi/output/yellowbrick_validation_curve.png)
 
 ### Interpretueshmëria — SHAP
-
-![SHAP Feature Importance](Faza%20III%20-%20Ritrajnimi/output/shap_feature_importance.png)
-
-![SHAP Beeswarm](Faza%20III%20-%20Ritrajnimi/output/shap_beeswarm.png)
 
 ---
 
