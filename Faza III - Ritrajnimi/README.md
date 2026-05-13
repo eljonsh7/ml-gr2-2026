@@ -20,7 +20,7 @@
 12. [Mjetet Shtesë të Analizës](#12-mjetet-shtesë-të-analizës)
     - [12.1 Testi McNemar - Faza II vs Faza III](#121-testi-mcnemar--faza-ii-vs-faza-iii)
     - [12.2 SHAP - Interpretueshmëria e Modelit](#122-shap--interpretueshmëria-e-modelit)
-    - [12.3 Kurba e Validimit - Ndjeshmëria ndaj Hiperparametrave](#123-kurba-e-validimit--ndjeshmëria-ndaj-hiperparametrave)
+    - [12.3 Lakorja e Validimit - Ndjeshmëria ndaj Hiperparametrave](#123-Lakorja-e-validimit--ndjeshmëria-ndaj-hiperparametrave)
 13. [Rezultatet](#13-rezultatet)
 14. [Krahasimi Faza II vs Faza III](#14-krahasimi-faza-ii-vs-faza-iii)
 15. [Skedarët e Prodhuar](#15-skedarët-e-prodhuar)
@@ -52,7 +52,7 @@
 | Metrikat | Accuracy, Precision, Recall, F1 | + ROC-AUC (macro, OvR)                                                     |
 | Testet statistikore | Asnjë | Wilcoxon (krahasim fold-to-fold) + McNemar (krahasim gabimesh në test set) |
 | Interpretueshmëria e modelit | Asnjë | SHAP - kontributi për-veçori i modelit më të mirë                          |
-| Diagnostikimi i hiperparametrave | Asnjë | Kurba e validimit (sweep i learning_rate)                                  |
+| Diagnostikimi i hiperparametrave | Asnjë | Lakorja e validimit (sweep i learning_rate)                                  |
 | Raporti final | RF dhe GB barabar | Fitues i vetëm me provë statistikore                                       |
 
 ---
@@ -91,9 +91,9 @@ Dataset i Fazës I (1,550 × 20)
                               │  Metrikat Kryesore                         │
                               │    Accuracy, Precision, Recall, F1, AUC   │
                               │    Matrica Konfuzioni (5 modele)           │
-                              │    Kurba ROC-AUC (5 modele, macro OvR)    │
-                              │    Kurba Kalibrimi                         │
-                              │    Kurbat e të Mësuarit (sklearn)          │
+                              │    Lakorja ROC-AUC (5 modele, macro OvR)    │
+                              │    Lakorja Kalibrimi                         │
+                              │    Lakoret e të Mësuarit (sklearn)          │
                               ├────────────────────────────────────────────┤
                               │  Testet Statistikore                       │
                               │    Wilcoxon: krahasim fold-to-fold CV      │
@@ -101,7 +101,7 @@ Dataset i Fazës I (1,550 × 20)
                               ├────────────────────────────────────────────┤
                               │  Interpretueshmëria dhe Diagnostika        │
                               │    SHAP: kontributet për-veçori (fituesi)  │
-                              │    Kurba Validimi: sweep i learning_rate   │
+                              │    Lakorja Validimi: sweep i learning_rate   │
                               └────────────────────────────────────────────┘
 ```
 
@@ -233,6 +233,14 @@ Faktori 0.05 heq vetëm veçoritë me nevojë nën 5% të mesatares - ky është
 **Rezultati:** 25 veçori → **9 veçori të mbajtura**
 
 Kjo redukton zhurmën nga veçoritë e parëndësishme, shpejton trajnimin dhe mund të përmirësojë gjeneralizimin. I njëjti maskë aplikohet në mënyrë identike mbi test set-in (pa ri-aplikim mbi të dhënat e testit).
+
+**Importancat e veçorive (blu = mbajtur, kuq = hequr) me vijën e pragut:**
+
+![Feature Selection](output/feature_selection.png)
+
+**Top veçori sipas nevojës Gini të RF pas zgjedhjes:**
+
+![Feature Importance Phase 3](output/feature_importance_phase3.png)
 
 ---
 
@@ -704,7 +712,7 @@ Peshohet sipas mbështetjes së klasës - më informuese kur klasat janë të pa
 
 ### ROC-AUC (Macro, One-vs-Rest)
 
-Për çdo klasë $k$, trajnohet një klasifikues binar (klasa $k$ vs. të gjithë të tjerët). Kurba ROC paraqet:
+Për çdo klasë $k$, trajnohet një klasifikues binar (klasa $k$ vs. të gjithë të tjerët). Lakorja ROC paraqet:
 
 $$\text{TPR}_k(\tau) = \frac{TP_k(\tau)}{TP_k(\tau) + FN_k(\tau)}, \quad \text{FPR}_k(\tau) = \frac{FP_k(\tau)}{FP_k(\tau) + TN_k(\tau)}$$
 
@@ -719,6 +727,14 @@ $$\text{ROC-AUC}_{\text{macro}} = \frac{1}{K} \sum_{k=1}^{K} \text{AUC}_k$$
 AUC = 1.0 do të thotë ndarje perfekte; AUC = 0.5 do të thotë klasifikues rastësor.
 
 **Të gjitha modelet e Fazës III arritën ROC-AUC > 0.998** - kalibrimi gati-perfekt i probabilitetit dhe ndarja e klasave.
+
+**Lakoret ROC makro-mesatare për të 5 modelet:**
+
+![ROC-AUC Curves Phase 3](output/roc_auc_curves_phase3.png)
+
+**Probabiliteti i parashikuar vs. fraksioni aktual për-klasë:**
+
+![Calibration Curves Phase 3](output/calibration_curves_phase3.png)
 
 ---
 
@@ -875,22 +891,30 @@ Për një klasë (p.sh., `High`), çdo pikë është një mostër testimi. Bosht
 
 Rëndësia standarde Gini numëron sa shpesh përdoret një veçori dhe ulja mesatare e papastërtisë - mbivlerëson veçoritë e korreluara dhe nuk jep informacion mbi drejtimin. Vlerat SHAP janë unike dhe plotësojnë aksiomët e **efikasitetit**, **simetrisë**, **dummyt** dhe **additivitetit** nga teoria e lojërave.
 
+**Kontributi mesatar |SHAP| i secilës veçori (global) — modeli fitues:**
+
+![SHAP Feature Importance](output/shap_feature_importance.png)
+
+**Shpërndarja e vlerave SHAP për çdo mostër dhe veçori:**
+
+![SHAP Beeswarm](output/shap_beeswarm.png)
+
 ---
 
-### 12.3 Kurba e Validimit - Ndjeshmëria ndaj Hiperparametrave
+### 12.3 Lakorja e Validimit - Ndjeshmëria ndaj Hiperparametrave
 
 #### Çfarë tregon
 
-Kurba e validimit paraqet rezultatin F1 të trajnimit dhe validimit të modelit ndërsa varion një hiperparametër i vetëm, duke mbajtur të tjerët fikse. I përgjigjet pyetjes:
+Lakorja e validimit paraqet rezultatin F1 të trajnimit dhe validimit të modelit ndërsa varion një hiperparametër i vetëm, duke mbajtur të tjerët fikse. I përgjigjet pyetjes:
 
 > *"Sa i ndjeshëm është performanca e modelit ndaj këtij hiperparametri? Ku është optimumi? A mbi-përshtatet modeli për vlera të mëdha?"*
 
 #### Pse learning_rate për Gradient Boosting?
 
 `learning_rate` (tkurrja $\eta$) është hiperparametri më ndikues i vetëm i Gradient Boosting. Kontrollon drejtpërdrejt:
-- **Nën-përshtatja** ($\eta$ i vogël, pemë të pakta): bias i lartë, të dy kurbat të ulëta
+- **Nën-përshtatja** ($\eta$ i vogël, pemë të pakta): bias i lartë, të dy lakoret të ulëta
 - **Përshtatje e mirë** ($\eta$ moderate): trajnimi ≈ validimi, të dyja të larta
-- **Mbi-përshtatja** ($\eta$ i lartë): kurba e trajnimit qëndron e lartë, validimi bie
+- **Mbi-përshtatja** ($\eta$ i lartë): lakorja e trajnimit qëndron e lartë, validimi bie
 
 Kjo e bën atë boshtin më informues për një grafik diagnostik.
 
@@ -913,14 +937,22 @@ train_scores, val_scores = validation_curve(
 
 Për çdo vlerë në `param_range`, estimatori trajnohet 5 herë (një herë për fold). Mesatarja ± std e rezultateve të trajnimit dhe validimit paraqiten në grafik. Boshti x përdor shkallë logaritmike pasi `learning_rate` shtrihet mbi dy rende magnitude.
 
-#### Kurba e të Mësuarit (sklearn)
+#### Lakorja e të Mësuarit (sklearn)
 
 Gjithashtu gjenerohet: një **kurbë të mësuari** që tregon si varion F1 me madhësinë e set-it të trajnimit (10% → 100%). Kjo diagnostikon:
-- **Bias i lartë** (nën-përshtatja): të dyja kurbat plafonohen nën 1.0
-- **Variancë e lartë** (mbi-përshtatja): kurba e trajnimit >> kurba e validimit me hendek të madh
-- **Përshtatje e mirë**: kurbat konvergjojnë pranë 1.0 me rritjen e madhësisë trajnuese
+- **Bias i lartë** (nën-përshtatja): të dyja lakoret plafonohen nën 1.0
+- **Variancë e lartë** (mbi-përshtatja): lakorja e trajnimit >> lakorja e validimit me hendek të madh
+- **Përshtatje e mirë**: lakoret konvergjojnë pranë 1.0 me rritjen e madhësisë trajnuese
 
-Modeli më i mirë i Fazës III (Gradient Boosting) tregon kurbat që konvergjojnë shpejt → modeli nuk është i varfër nga të dhënat dhe nuk mbi-përshtatet.
+Modeli më i mirë i Fazës III (Gradient Boosting) tregon lakoret që konvergjojnë shpejt → modeli nuk është i varfër nga të dhënat dhe nuk mbi-përshtatet.
+
+**Lakoret e të mësuarit — F1 trajnimit vs. validimit me rritjen e madhësisë trajnuese:**
+
+![Learning Curves Phase 3](output/learning_curves_phase3.png)
+
+**Lakorja e validimit — F1 vs. sweep i `learning_rate` për Gradient Boosting:**
+
+![Yellowbrick Validation Curve](output/yellowbrick_validation_curve.png)
 
 ---
 
@@ -947,6 +979,30 @@ F1 (macro)            : 0.9904
 ROC-AUC (macro)       : 0.9999
 ```
 
+**Krahasimi vizual i 5 modeleve — Accuracy, Precision, Recall, F1:**
+
+![Algorithm Comparison Phase 3](output/algorithm_comparison_phase3.png)
+
+**Matrica e konfuzionit — Gradient Boosting (modeli fitues):**
+
+![Confusion Matrix - Gradient Boosting](output/confusion_matrix_gradient_boosting.png)
+
+**Matrica e konfuzionit — Random Forest:**
+
+![Confusion Matrix - Random Forest](output/confusion_matrix_random_forest.png)
+
+**Matrica e konfuzionit — SVM Linear:**
+
+![Confusion Matrix - SVM Linear](output/confusion_matrix_svm_linear.png)
+
+**Matrica e konfuzionit — Logistic Regression:**
+
+![Confusion Matrix - Logistic Regression](output/confusion_matrix_logistic_regression.png)
+
+**Matrica e konfuzionit — Neural Network (MLP):**
+
+![Confusion Matrix - Neural Network MLP](output/confusion_matrix_neural_network_mlp.png)
+
 ---
 
 ## 14. Krahasimi Faza II vs Faza III
@@ -966,6 +1022,10 @@ ROC-AUC (macro)       : 0.9999
 4. **CV F1 e GB u përmirësua nga 0.9984 → 0.9992** - hapësira më e madhe e parametrave (500 pemë, subsample=0.9) nxori variancën e mbetur
 5. **Të gjitha modelet u përmirësuan ose qëndruan** - asnjë model nuk u degradua, duke konfirmuar se kërkimi i gjerë ishte i dobishëm
 
+**F1 krah-për-krah Faza II vs Faza III me ndryshimet Δ të shënuara:**
+
+![Phase 2 vs Phase 3 Comparison](output/phase2_vs_phase3_comparison.png)
+
 ---
 
 ## 15. Skedarët e Prodhuar
@@ -983,15 +1043,15 @@ ROC-AUC (macro)       : 0.9999
 
 ### Vizualizimet Kryesore
 
-| Skedari | Çfarë tregon                                                             | Pse ka rëndësi                                                     |
-|---|--------------------------------------------------------------------------|--------------------------------------------------------------------|
+| Skedari | Çfarë tregon                                                              | Pse ka rëndësi                                                     |
+|---|---------------------------------------------------------------------------|--------------------------------------------------------------------|
 | `algorithm_comparison_phase3.png` | Grafiku me shtylla grupore: Accuracy, Precision, Recall, F1 për 5 modelet | Krahasim vizual i shpejtë me shikim të parë                        |
-| `phase2_vs_phase3_comparison.png` | Shtylla krah-për-krah F1 (Ph2 vs Ph3) me shënime Δ                       | Tregon drejtpërdrejt cilat modele u përmirësuan dhe me sa          |
-| `feature_selection.png` | Shtylla rëndësish (blu=mbajtur, kuq=hequr) + vija e pragut               | Tregon cilat veçori u eliminuan dhe pse                            |
-| `feature_importance_phase3.png` | Veçoritë kryesore sipas nevojës Gini të RF pas zgjedhjes                 | Cilat veçori nxisin ndarjet e ansamblit                            |
-| `roc_auc_curves_phase3.png` | Kurbat ROC makro-mesatare për 5 modelet                                  | Vlerëson cilësinë e probabilitetit, jo vetëm parashikimet e ngurta |
-| `calibration_curves_phase3.png` | Probabiliteti i parashikuar vs. fraksioni aktual për-klasë               | Kontrollon nëse 0.8 i parashikuar do të thotë 80% e herëve         |
-| `confusion_matrix_*.png` | Heatmap 3×3 për çdo model (5 skedarë)                                    | Modeli i gabimit për-klasë - cilat klasa ngatërrohen               |
+| `phase2_vs_phase3_comparison.png` | Shtylla krah-për-krah F1 (Ph2 vs Ph3) me shënime Δ                        | Tregon drejtpërdrejt cilat modele u përmirësuan dhe me sa          |
+| `feature_selection.png` | Shtylla rëndësish (blu=mbajtur, kuq=hequr) + vija e pragut                | Tregon cilat veçori u eliminuan dhe pse                            |
+| `feature_importance_phase3.png` | Veçoritë kryesore sipas nevojës Gini të RF pas zgjedhjes                  | Cilat veçori nxisin ndarjet e ansamblit                            |
+| `roc_auc_curves_phase3.png` | Lakoret ROC makro-mesatare për 5 modelet                                  | Vlerëson cilësinë e probabilitetit, jo vetëm parashikimet e ngurta |
+| `calibration_curves_phase3.png` | Probabiliteti i parashikuar vs. fraksioni aktual për-klasë                | Kontrollon nëse 0.8 i parashikuar do të thotë 80% e herëve         |
+| `confusion_matrix_*.png` | Heatmap 3×3 për çdo model (5 skedarë)                                     | Modeli i gabimit për-klasë - cilat klasa ngatërrohen               |
 
 ### Grafet Diagnostike dhe të Interpretueshmërisë
 

@@ -756,15 +756,65 @@ Testi Wilcoxon (njëanësor, α = 0.05) mbi 5 fold-et CV konfirmon nëse Gradien
 - `phase2_vs_phase3_comparison.png`: shtylla krah-për-krah me delta-t të shënuara
 - `feature_selection.png`: importancat e veçorive (blu = mbajtur, kuq = hequr) me vijën e pragut
 - `feature_importance_phase3.png`: top veçori sipas RF pas zgjedhjes
-- `learning_curves_phase3.png`: kurba trajnimi vs. validimi (parametrat finalë të RF)
-- `roc_auc_curves_phase3.png`: kurba ROC makro-mesatare për të 5 modelet
+- `learning_curves_phase3.png`: lakorja trajnimi vs. validimi (parametrat finalë të RF)
+- `roc_auc_curves_phase3.png`: lakorja ROC makro-mesatare për të 5 modelet
 - `calibration_curves_phase3.png`: probabiliteti i parashikuar vs. fraksioni aktual sipas klasës
 - `shap_feature_importance.png`: kontributi mesatar |SHAP| i secilës veçori — pse modeli vendos kështu
 - `shap_beeswarm.png`: shpërndarja e vlerave SHAP për çdo mostër dhe veçori (klasa e parë)
-- `yellowbrick_validation_curve.png`: kurba e validimit vs. `learning_rate` — ndjeshmëria ndaj hiperparametrit kryesor (sklearn fallback, Yellowbrick nuk suporton Python 3.14)
+- `yellowbrick_validation_curve.png`: lakorja e validimit vs. `learning_rate` — ndjeshmëria ndaj hiperparametrit kryesor (sklearn fallback, Yellowbrick nuk suporton Python 3.14)
 - `wilcoxon_results.txt`: raporti i plotë i testit Wilcoxon (krahasim CV fold-to-fold)
 - `mcnemar_results.txt`: testi McNemar — krahasim i gabimeve individuale Ph2 vs Ph3 (e njëjta test set)
 - `confusion_matrix_*.png`: 5 matrica konfuzioni (një për model)
+
+---
+
+## Vizualizimet e Fazës III
+
+### Zgjedhja e Veçorive
+
+![Feature Selection](Faza%20III%20-%20Ritrajnimi/output/feature_selection.png)
+
+![Feature Importance Phase 3](Faza%20III%20-%20Ritrajnimi/output/feature_importance_phase3.png)
+
+### Krahasimi i Algoritmeve
+
+![Algorithm Comparison Phase 3](Faza%20III%20-%20Ritrajnimi/output/algorithm_comparison_phase3.png)
+
+### Krahasimi Faza II vs Faza III
+
+![Phase 2 vs Phase 3 Comparison](Faza%20III%20-%20Ritrajnimi/output/phase2_vs_phase3_comparison.png)
+
+### Matrica e Konfuzionit — Gradient Boosting (Fituesi)
+
+![Confusion Matrix - Gradient Boosting](Faza%20III%20-%20Ritrajnimi/output/confusion_matrix_gradient_boosting.png)
+
+### Matrica e Konfuzionit — Modelet e Tjera
+
+![Confusion Matrix - Random Forest](Faza%20III%20-%20Ritrajnimi/output/confusion_matrix_random_forest.png)
+
+![Confusion Matrix - SVM Linear](Faza%20III%20-%20Ritrajnimi/output/confusion_matrix_svm_linear.png)
+
+![Confusion Matrix - Logistic Regression](Faza%20III%20-%20Ritrajnimi/output/confusion_matrix_logistic_regression.png)
+
+![Confusion Matrix - Neural Network MLP](Faza%20III%20-%20Ritrajnimi/output/confusion_matrix_neural_network_mlp.png)
+
+### ROC-AUC dhe Kalibrimi
+
+![ROC-AUC Curves Phase 3](Faza%20III%20-%20Ritrajnimi/output/roc_auc_curves_phase3.png)
+
+![Calibration Curves Phase 3](Faza%20III%20-%20Ritrajnimi/output/calibration_curves_phase3.png)
+
+### Lakoret e të Mësuarit dhe Validimit
+
+![Learning Curves Phase 3](Faza%20III%20-%20Ritrajnimi/output/learning_curves_phase3.png)
+
+![Yellowbrick Validation Curve](Faza%20III%20-%20Ritrajnimi/output/yellowbrick_validation_curve.png)
+
+### Interpretueshmëria — SHAP
+
+![SHAP Feature Importance](Faza%20III%20-%20Ritrajnimi/output/shap_feature_importance.png)
+
+![SHAP Beeswarm](Faza%20III%20-%20Ritrajnimi/output/shap_beeswarm.png)
 
 ---
 
