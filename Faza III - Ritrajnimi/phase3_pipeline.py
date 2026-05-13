@@ -1,6 +1,6 @@
 """
-Faza III: Optimizimi dhe Fine-Tuning i Modeleve
-================================================
+Faza III - Ritrajnimi: Optimizimi dhe Fine-Tuning i Modeleve
+=============================================================
 Changes from Phase II:
   - SVM (RBF) removed — lowest Phase II performer (CV F1 = 0.9599)
   - GridSearchCV  →  RandomizedSearchCV with wider parameter grids
@@ -8,6 +8,9 @@ Changes from Phase II:
   - Feature selection via Random Forest importance (drop near-zero features)
   - New metrics: ROC-AUC (macro, OvR)
   - Statistical significance: Wilcoxon signed-rank test between best model and others
+  - McNemar's test: Phase II best model vs Phase III best model (same test set)
+  - SHAP analysis: feature-level contribution for best model
+  - Yellowbrick: LearningCurve + ValidationCurve for best model
   - Phase II vs Phase III comparison report
   - Single best model selected and reported
 """
@@ -48,12 +51,35 @@ from sklearn.model_selection import (
     cross_val_score,
     learning_curve,
     train_test_split,
+    validation_curve,
 )
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, label_binarize
 from sklearn.svm import SVC
 
 warnings.filterwarnings("ignore")
+
+# ---------------------------------------------------------------------------
+# Optional dependencies — graceful fallback if not installed
+# ---------------------------------------------------------------------------
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except ImportError:
+    SHAP_AVAILABLE = False
+
+try:
+    from statsmodels.stats.contingency_tables import mcnemar as _mcnemar_test
+    STATSMODELS_AVAILABLE = True
+except ImportError:
+    STATSMODELS_AVAILABLE = False
+
+try:
+    from yellowbrick.model_selection import LearningCurve as _YBLearningCurve
+    from yellowbrick.model_selection import ValidationCurve as _YBValidationCurve
+    YELLOWBRICK_AVAILABLE = True
+except ImportError:
+    YELLOWBRICK_AVAILABLE = False
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -77,6 +103,18 @@ sns.set_theme(style="whitegrid", palette="deep")
 # ---------------------------------------------------------------------------
 # Phase II baseline results (hardcoded for comparison chart)
 # ---------------------------------------------------------------------------
+
+# Phase II best model (Gradient Boosting) approximate parameters.
+# Used in McNemar's test to rebuild a Phase II–equivalent model on the same
+# train/test split and compare per-sample error patterns with Phase III.
+PHASE2_GB_PARAMS: dict = {
+    "n_estimators": 200,
+    "learning_rate": 0.1,
+    "max_depth": 3,
+    "subsample": 1.0,
+    "min_samples_split": 2,
+}
+
 PHASE2_BASELINE = {
     "Logistic Regression":   {"CV F1": 0.9847, "Accuracy": 0.9742, "F1 (macro)": 0.9741},
     "Random Forest":         {"CV F1": 0.9968, "Accuracy": 0.9903, "F1 (macro)": 0.9904},
@@ -736,19 +774,342 @@ def write_final_report(
         "| `model_results_phase3.csv` | All model metrics |",
         "| `comparison_phase2_vs_phase3.csv` | Phase II vs III delta |",
         "| `classification_reports_phase3.txt` | Per-class reports |",
-        "| `wilcoxon_results.txt` | Statistical significance |",
+        "| `wilcoxon_results.txt` | Wilcoxon statistical significance |",
+        "| `mcnemar_results.txt` | McNemar Ph2 vs Ph3 comparison |",
         "| `algorithm_comparison_phase3.png` | Bar chart all models |",
         "| `phase2_vs_phase3_comparison.png` | Improvement chart |",
         "| `feature_selection.png` | Which features were kept/removed |",
         "| `feature_importance_phase3.png` | RF feature importances |",
-        "| `learning_curves_phase3.png` | Overfitting analysis |",
+        "| `learning_curves_phase3.png` | Overfitting analysis (sklearn) |",
         "| `roc_auc_curves_phase3.png` | ROC-AUC all models |",
         "| `calibration_curves_phase3.png` | Probability calibration |",
+        "| `shap_feature_importance.png` | SHAP global feature importance |",
+        "| `shap_beeswarm.png` | SHAP beeswarm (per-sample contributions) |",
+        "| `yellowbrick_learning_curve.png` | Yellowbrick learning curve |",
+        "| `yellowbrick_validation_curve.png` | Yellowbrick validation curve |",
         "| `confusion_matrix_*.png` | Per-model confusion matrices |",
         "",
     ]
 
     (OUTPUT / "final_report_phase3.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+# ===========================================================================
+# SHAP ANALYSIS
+# ===========================================================================
+
+def plot_shap_analysis(
+    fitted_models: dict,
+    X_test: pd.DataFrame,
+    best_model_name: str,
+) -> None:
+    """
+    SHAP (SHapley Additive exPlanations) for the best model.
+
+    For tree ensembles (RF, GB) we use TreeExplainer which is exact and fast.
+    We produce two plots:
+      1. Global feature importance bar chart (mean |SHAP| across all classes)
+      2. Beeswarm summary plot (distribution of SHAP values for one class)
+
+    Multi-class SHAP returns either:
+      - A list of arrays [class0, class1, class2], each (n_samples, n_features)
+      - Or a 3-D array (n_samples, n_features, n_classes) in newer shap versions.
+    Both cases are normalised to mean-abs-SHAP per feature below.
+    """
+    if not SHAP_AVAILABLE:
+        print("    SHAP not installed — skipping. Install with: pip install shap")
+        return
+
+    model = fitted_models[best_model_name]
+    if not isinstance(model, (RandomForestClassifier, GradientBoostingClassifier)):
+        print(f"    SHAP TreeExplainer skipped for {best_model_name} (not a tree ensemble).")
+        return
+
+    # Clean feature names for display
+    clean_cols = [
+        c.replace("numeric__", "").replace("categorical__", "")
+        for c in X_test.columns
+    ]
+    X_display = X_test.copy()
+    X_display.columns = clean_cols
+
+    try:
+        explainer  = shap.TreeExplainer(model)
+        shap_vals  = explainer.shap_values(X_display)
+
+        # Normalise to (n_samples, n_features) mean-abs across classes -----------
+        if isinstance(shap_vals, list):
+            # List of 2-D arrays, one per class
+            mean_abs = np.mean([np.abs(sv) for sv in shap_vals], axis=0)   # (n, f)
+        elif shap_vals.ndim == 3:
+            # 3-D array (n, f, classes)
+            mean_abs = np.abs(shap_vals).mean(axis=2)                       # (n, f)
+        else:
+            mean_abs = np.abs(shap_vals)
+
+        mean_per_feature = mean_abs.mean(axis=0)   # (n_features,)
+
+        # --- Plot 1: Global importance bar chart --------------------------------
+        top_n    = min(15, len(mean_per_feature))
+        top_idx  = np.argsort(mean_per_feature)[-top_n:]
+
+        fig, ax = plt.subplots(figsize=(10, 7))
+        ax.barh(
+            range(top_n),
+            mean_per_feature[top_idx],
+            color="steelblue",
+            edgecolor="black",
+            linewidth=0.4,
+        )
+        ax.set_yticks(range(top_n))
+        ax.set_yticklabels([clean_cols[i] for i in top_idx], fontsize=9)
+        ax.set_xlabel("Mean |SHAP value| (avg across classes)")
+        ax.set_title(
+            f"SHAP Feature Importance — {best_model_name} (Phase III)",
+            fontsize=13,
+            fontweight="bold",
+        )
+        plt.tight_layout()
+        fig.savefig(OUTPUT / "shap_feature_importance.png", dpi=PLOT_DPI)
+        plt.close(fig)
+
+        # --- Plot 2: Beeswarm summary (first class only for readability) ---------
+        sv_for_plot = shap_vals[0] if isinstance(shap_vals, list) else (
+            shap_vals[:, :, 0] if shap_vals.ndim == 3 else shap_vals
+        )
+        plt.figure(figsize=(10, 7))
+        shap.summary_plot(sv_for_plot, X_display, max_display=top_n, show=False)
+        plt.title(
+            f"SHAP Beeswarm — {best_model_name} (class: {model.classes_[0]})",
+            fontsize=13,
+            fontweight="bold",
+            pad=20,
+        )
+        plt.tight_layout()
+        plt.savefig(OUTPUT / "shap_beeswarm.png", dpi=PLOT_DPI, bbox_inches="tight")
+        plt.close()
+
+        print("    SHAP plots saved: shap_feature_importance.png, shap_beeswarm.png")
+
+    except Exception as exc:
+        print(f"    SHAP analysis encountered an error and was skipped: {exc}")
+
+
+# ===========================================================================
+# McNEMAR'S TEST — Phase II vs Phase III
+# ===========================================================================
+
+def run_mcnemar_test(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    ph3_best_model,
+    best_model_name: str,
+) -> None:
+    """
+    McNemar's test (exact, two-sided) comparing per-sample errors of:
+      - Phase II equivalent Gradient Boosting (PHASE2_GB_PARAMS, retrained)
+      - Phase III best model
+
+    Both models are evaluated on the identical X_test so the pairing is valid.
+    Contingency table:
+        [[a = both correct,    b = Ph2 wrong / Ph3 right],
+         [c = Ph2 right / Ph3 wrong, d = both wrong      ]]
+    Under H0: b == c (symmetric errors).
+    """
+    if not STATSMODELS_AVAILABLE:
+        print("    statsmodels not installed — skipping McNemar. Install with: pip install statsmodels")
+        return
+
+    print("    Training Phase II equivalent GB for McNemar comparison ...")
+    ph2_gb = GradientBoostingClassifier(random_state=RANDOM_STATE, **PHASE2_GB_PARAMS)
+    ph2_gb.fit(X_train, y_train)
+
+    y_true    = y_test.values
+    y_pred_p2 = ph2_gb.predict(X_test)
+    y_pred_p3 = ph3_best_model.predict(X_test)
+
+    correct_p2 = y_pred_p2 == y_true
+    correct_p3 = y_pred_p3 == y_true
+
+    a = int(np.sum( correct_p2 &  correct_p3))   # both right
+    b = int(np.sum(~correct_p2 &  correct_p3))   # Ph2 wrong, Ph3 right
+    c = int(np.sum( correct_p2 & ~correct_p3))   # Ph2 right, Ph3 wrong
+    d = int(np.sum(~correct_p2 & ~correct_p3))   # both wrong
+
+    table  = np.array([[a, b], [c, d]])
+    result = _mcnemar_test(table, exact=True)
+
+    significant = result.pvalue < 0.05
+    verdict     = "Ph3 is significantly better (fewer errors)" if b > c and significant else (
+                  "Ph2 is significantly better" if c > b and significant else
+                  "No statistically significant difference in error rates")
+
+    lines = [
+        "=" * 60,
+        "McNEMAR'S TEST — Phase II vs Phase III",
+        f"Ph2 model : Gradient Boosting (params: {PHASE2_GB_PARAMS})",
+        f"Ph3 model : {best_model_name}",
+        "=" * 60,
+        "",
+        "H0: The two classifiers make errors at the same rate.",
+        "H1: There is a difference in error rate.",
+        "Significance level: α = 0.05  (exact binomial test)",
+        "",
+        "Contingency Table:",
+        f"  Both correct          (a): {a:>4}",
+        f"  Ph2 wrong, Ph3 right  (b): {b:>4}",
+        f"  Ph2 right, Ph3 wrong  (c): {c:>4}",
+        f"  Both wrong            (d): {d:>4}",
+        "",
+        f"McNemar statistic : {result.statistic:.4f}",
+        f"p-value (exact)   : {result.pvalue:.4f}",
+        f"Significant       : {'YES' if significant else 'No'}",
+        "",
+        f"Verdict: {verdict}",
+    ]
+
+    report = "\n".join(lines)
+    (OUTPUT / "mcnemar_results.txt").write_text(report, encoding="utf-8")
+    print(report)
+
+
+# ===========================================================================
+# YELLOWBRICK VISUALISERS
+# ===========================================================================
+
+def _plot_validation_curve_sklearn(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    best_model_name: str,
+    best_params: dict,
+) -> None:
+    """
+    Pure-sklearn validation curve for `learning_rate` — used as fallback
+    when Yellowbrick is not importable (e.g. Python 3.14 removes distutils).
+    """
+    cv = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=RANDOM_STATE)
+    param_range = [0.005, 0.01, 0.03, 0.05, 0.1, 0.15, 0.2, 0.3]
+
+    # Build estimator without learning_rate so we can sweep it
+    sweep_params = {k: v for k, v in best_params.items() if k != "learning_rate"}
+    estimator = GradientBoostingClassifier(random_state=RANDOM_STATE, **sweep_params)
+
+    try:
+        train_scores, val_scores = validation_curve(
+            estimator,
+            X_train.values,
+            y_train.values,
+            param_name="learning_rate",
+            param_range=param_range,
+            cv=cv,
+            scoring="f1_macro",
+            n_jobs=1,
+        )
+    except Exception as exc:
+        print(f"    Validation curve (sklearn fallback) failed: {exc}")
+        return
+
+    t_mean, t_std = train_scores.mean(axis=1), train_scores.std(axis=1)
+    v_mean, v_std = val_scores.mean(axis=1),   val_scores.std(axis=1)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.fill_between(param_range, t_mean - t_std, t_mean + t_std, alpha=0.15, color="blue")
+    ax.fill_between(param_range, v_mean - v_std, v_mean + v_std, alpha=0.15, color="orange")
+    ax.semilogx(param_range, t_mean, "o-", color="blue",   label="Training Score")
+    ax.semilogx(param_range, v_mean, "o-", color="orange", label="Validation Score")
+    ax.set_title(
+        f"Validation Curve — learning_rate ({best_model_name}, Phase III)",
+        fontsize=13,
+        fontweight="bold",
+    )
+    ax.set_xlabel("learning_rate (log scale)")
+    ax.set_ylabel("F1 Score (macro)")
+    ax.legend(loc="lower right")
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    fig.savefig(OUTPUT / "yellowbrick_validation_curve.png", dpi=PLOT_DPI)
+    plt.close(fig)
+    print("    Validation curve (sklearn fallback) saved: yellowbrick_validation_curve.png")
+
+
+def plot_yellowbrick_curves(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    best_model_name: str,
+    best_params: dict,
+) -> None:
+    """
+    Two Yellowbrick diagnostic plots for the best Gradient Boosting model:
+      1. LearningCurve  — training score vs validation score as training size grows
+      2. ValidationCurve — F1 vs a single key hyperparameter (learning_rate)
+
+    These visualise bias-variance behaviour and sensitivity to the most
+    impactful hyperparameter, which is central to the retraining narrative.
+    Falls back gracefully if yellowbrick is not installed.
+    """
+    if not YELLOWBRICK_AVAILABLE:
+        print("    Yellowbrick not available (Python 3.14 incompatibility) — using sklearn fallback.")
+        _plot_validation_curve_sklearn(X_train, y_train, best_model_name, best_params)
+        return
+
+    cv = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=RANDOM_STATE)
+
+    # GB params for the curve — keep the best params but allow n_estimators flexibility
+    gb_curve_params = {k: v for k, v in best_params.items() if k != "learning_rate"}
+
+    # --- Learning Curve -------------------------------------------------------
+    try:
+        estimator_lc = GradientBoostingClassifier(random_state=RANDOM_STATE, **best_params)
+        fig_lc, ax_lc = plt.subplots(figsize=(10, 6))
+        viz_lc = _YBLearningCurve(
+            estimator_lc,
+            cv=cv,
+            scoring="f1_macro",
+            train_sizes=np.linspace(0.1, 1.0, 8),
+            ax=ax_lc,
+        )
+        viz_lc.fit(X_train.values, y_train.values)
+        viz_lc.finalize()
+        ax_lc.set_title(
+            f"Learning Curve — {best_model_name} (Phase III, Yellowbrick)",
+            fontsize=13,
+            fontweight="bold",
+        )
+        plt.tight_layout()
+        fig_lc.savefig(OUTPUT / "yellowbrick_learning_curve.png", dpi=PLOT_DPI)
+        plt.close(fig_lc)
+        print("    Yellowbrick learning curve saved.")
+    except Exception as exc:
+        print(f"    Yellowbrick LearningCurve skipped: {exc}")
+
+    # --- Validation Curve (learning_rate) ------------------------------------
+    try:
+        estimator_vc = GradientBoostingClassifier(random_state=RANDOM_STATE, **gb_curve_params)
+        param_range  = [0.005, 0.01, 0.03, 0.05, 0.1, 0.15, 0.2, 0.3]
+        fig_vc, ax_vc = plt.subplots(figsize=(10, 6))
+        viz_vc = _YBValidationCurve(
+            estimator_vc,
+            param_name="learning_rate",
+            param_range=param_range,
+            cv=cv,
+            scoring="f1_macro",
+            ax=ax_vc,
+        )
+        viz_vc.fit(X_train.values, y_train.values)
+        viz_vc.finalize()
+        ax_vc.set_title(
+            f"Validation Curve — learning_rate ({best_model_name}, Phase III)",
+            fontsize=13,
+            fontweight="bold",
+        )
+        plt.tight_layout()
+        fig_vc.savefig(OUTPUT / "yellowbrick_validation_curve.png", dpi=PLOT_DPI)
+        plt.close(fig_vc)
+        print("    Yellowbrick validation curve saved.")
+    except Exception as exc:
+        print(f"    Yellowbrick ValidationCurve skipped: {exc}")
 
 
 # ===========================================================================
@@ -823,17 +1184,34 @@ def main() -> None:
     plot_calibration(fitted, X_test_sel, y_test)
 
     # -----------------------------------------------------------------------
-    # [4] Statistical test
+    # [3b] Advanced analysis tools
     # -----------------------------------------------------------------------
+    # Wilcoxon needed first so we know the best model name before SHAP/McNemar
     print("\n[9] Running Wilcoxon signed-rank test ...")
     best_model_name, wilcoxon_text = run_wilcoxon_test(cv_fold_scores, results_df)
     print(f"    Best model: {best_model_name}")
     print(f"    CV F1 = {results_df.loc[best_model_name, 'CV F1 (macro)']}")
 
+    print(f"\n[10] SHAP analysis — {best_model_name} ...")
+    plot_shap_analysis(fitted, X_test_sel, best_model_name)
+
+    print(f"\n[11] McNemar's test (Phase II GB vs Phase III {best_model_name}) ...")
+    run_mcnemar_test(
+        X_train_sel, y_train_bal,
+        X_test_sel,  y_test,
+        fitted[best_model_name],
+        best_model_name,
+    )
+
+    print(f"\n[12] Yellowbrick learning + validation curves — {best_model_name} ...")
+    gb_best_params = json.loads(results_df.loc[best_model_name, "Best Params"]) \
+        if best_model_name == "Gradient Boosting" else PHASE2_GB_PARAMS
+    plot_yellowbrick_curves(X_train_sel, y_train_bal, best_model_name, gb_best_params)
+
     # -----------------------------------------------------------------------
     # [5] Comparison table & final report
     # -----------------------------------------------------------------------
-    print("\n[10] Building comparison table & final report ...")
+    print("\n[14] Building comparison table & final report ...")
     comparison_df = build_comparison_table(results_df)
     write_final_report(
         best_model_name,
@@ -850,7 +1228,7 @@ def main() -> None:
     # Done
     # -----------------------------------------------------------------------
     print("\n" + "=" * 65)
-    print(f"FAZA III COMPLETE")
+    print(f"FAZA III - RITRAJNIMI COMPLETE")
     print(f"  Best model : {best_model_name}")
     print(f"  CV F1      : {results_df.loc[best_model_name, 'CV F1 (macro)']}")
     print(f"  Accuracy   : {results_df.loc[best_model_name, 'Accuracy']}")

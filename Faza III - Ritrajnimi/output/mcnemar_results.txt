@@ -1,0 +1,21 @@
+============================================================
+McNEMAR'S TEST — Phase II vs Phase III
+Ph2 model : Gradient Boosting (params: {'n_estimators': 200, 'learning_rate': 0.1, 'max_depth': 3, 'subsample': 1.0, 'min_samples_split': 2})
+Ph3 model : Gradient Boosting
+============================================================
+
+H0: The two classifiers make errors at the same rate.
+H1: There is a difference in error rate.
+Significance level: α = 0.05  (exact binomial test)
+
+Contingency Table:
+  Both correct          (a):  307
+  Ph2 wrong, Ph3 right  (b):    0
+  Ph2 right, Ph3 wrong  (c):    0
+  Both wrong            (d):    3
+
+McNemar statistic : 0.0000
+p-value (exact)   : 1.0000
+Significant       : No
+
+Verdict: No statistically significant difference in error rates

@@ -585,7 +585,7 @@ Pra, Faza II tregoi jo vetëm se mund të ndërtohen modele shumë të sakta pë
 Dokumentimi i plotë i kësaj faze gjendet te:
 - `./Faza II - Analiza dhe evaluimi/README.md`
 
-## Faza III: Optimizimi dhe Fine-Tuning i Modeleve
+## Faza III - Ritrajnimi: Optimizimi dhe Fine-Tuning i Modeleve
 
 ## Qëllimi i Fazës III
 Faza III merr pesë modelet më të mira nga Faza II, zgjeron hapësirat e hiperparametrave dhe identifikon një model të vetëm fitues me mbështetje statistikore. SVM (RBF) hiqet plotësisht — ishte modeli më i dobët i Fazës II me CV F1 = 0.9599 dhe fleksibiliteti i tij shtesë nuk solli asnjë përfitim real.
@@ -602,7 +602,7 @@ Ndryshimet kryesore metodologjike:
 
 ## Struktura e Fazës III
 ```text
-Faza III/
+Faza III - Ritrajnimi/
 ├── README.md
 ├── phase3_pipeline.py
 └── output/
@@ -610,6 +610,7 @@ Faza III/
     ├── comparison_phase2_vs_phase3.csv
     ├── classification_reports_phase3.txt
     ├── wilcoxon_results.txt
+    ├── mcnemar_results.txt
     ├── final_report_phase3.md
     ├── algorithm_comparison_phase3.png
     ├── phase2_vs_phase3_comparison.png
@@ -618,6 +619,10 @@ Faza III/
     ├── learning_curves_phase3.png
     ├── roc_auc_curves_phase3.png
     ├── calibration_curves_phase3.png
+    ├── shap_feature_importance.png
+    ├── shap_beeswarm.png
+    ├── yellowbrick_learning_curve.png
+    ├── yellowbrick_validation_curve.png
     └── confusion_matrix_*.png
 ```
 
@@ -746,7 +751,7 @@ Testi Wilcoxon (njëanësor, α = 0.05) mbi 5 fold-et CV konfirmon nëse Gradien
 
 ---
 
-## Diskutimi i grafeve të gjeneruara
+## Diskutimi i grafeve dhe mjeteve të gjeneruara
 
 - `algorithm_comparison_phase3.png`: krahasimi i 5 modeleve me 4 metrika
 - `phase2_vs_phase3_comparison.png`: shtylla krah-për-krah me delta-t të shënuara
@@ -755,7 +760,12 @@ Testi Wilcoxon (njëanësor, α = 0.05) mbi 5 fold-et CV konfirmon nëse Gradien
 - `learning_curves_phase3.png`: kurba trajnimi vs. validimi (parametrat finalë të RF)
 - `roc_auc_curves_phase3.png`: kurba ROC makro-mesatare për të 5 modelet
 - `calibration_curves_phase3.png`: probabiliteti i parashikuar vs. fraksioni aktual sipas klasës
-- `wilcoxon_results.txt`: raporti i plotë i testit statistikor
+- `shap_feature_importance.png`: kontributi mesatar |SHAP| i secilës veçori — pse modeli vendos kështu
+- `shap_beeswarm.png`: shpërndarja e vlerave SHAP për çdo mostër dhe veçori (klasa e parë)
+- `yellowbrick_learning_curve.png`: kurba e të mësuarit (Yellowbrick) — diagnoza bias-variance
+- `yellowbrick_validation_curve.png`: kurba e validimit vs. `learning_rate` — ndjeshmëria ndaj hiperparametrit kryesor
+- `wilcoxon_results.txt`: raporti i plotë i testit Wilcoxon (krahasim CV fold-to-fold)
+- `mcnemar_results.txt`: testi McNemar — krahasim i gabimeve individuale Ph2 vs Ph3 (e njëjta test set)
 - `confusion_matrix_*.png`: 5 matrica konfuzioni (një për model)
 
 ---
@@ -779,6 +789,6 @@ Faza III konfirmoi se:
 4. Dataseti i Fazës I dhe inxhinieria e veçorive ishin të cilësisë së lartë — konfirmohet përfundimisht
 
 Dokumentimi i plotë i kësaj faze gjendet te:
-- `./Faza III/README.md`
+- `./Faza III - Ritrajnimi/README.md`
 
 ---

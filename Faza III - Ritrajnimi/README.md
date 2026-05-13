@@ -1,4 +1,4 @@
-# Faza III — Optimizimi dhe Fine-Tuning i Modeleve
+# Faza III - Ritrajnimi: Optimizimi dhe Fine-Tuning i Modeleve
 
 ## Table of Contents
 1. [Overview](#1-overview)
@@ -16,10 +16,14 @@
    - [9.4 SVM Linear](#94-support-vector-machine--linear-kernel)
    - [9.5 Neural Network (MLP)](#95-neural-network--multi-layer-perceptron)
 10. [Evaluation Metrics — Full Formulas](#10-evaluation-metrics--full-formulas)
-11. [Statistical Significance — Wilcoxon Test](#11-statistical-significance--wilcoxon-signed-rank-test)
-12. [Results](#12-results)
-13. [Phase II vs Phase III Comparison](#13-phase-ii-vs-phase-iii-comparison)
-14. [Output Files](#14-output-files)
+11. [Statistical Significance — Wilcoxon Signed-Rank Test](#11-statistical-significance--wilcoxon-signed-rank-test)
+12. [Additional Analysis Tools](#12-additional-analysis-tools)
+    - [12.1 McNemar's Test — Phase II vs Phase III](#121-mcnemars-test--phase-ii-vs-phase-iii)
+    - [12.2 SHAP — Model Interpretability](#122-shap--model-interpretability)
+    - [12.3 Validation Curve — Hyperparameter Sensitivity](#123-validation-curve--hyperparameter-sensitivity)
+13. [Results](#13-results)
+14. [Phase II vs Phase III Comparison](#14-phase-ii-vs-phase-iii-comparison)
+15. [Output Files](#15-output-files)
 
 ---
 
@@ -43,10 +47,12 @@
 | Search method | `GridSearchCV` | `RandomizedSearchCV` |
 | CV folds | 3 | 5 |
 | Parameter ranges | Narrow | Wide (3–5× more values) |
-| Feature selection | None | RF-importance threshold |
+| Feature selection | None | RF-importance threshold (25 → 9) |
 | Metrics | Accuracy, Precision, Recall, F1 | + ROC-AUC (macro, OvR) |
-| Statistical test | None | Wilcoxon signed-rank |
-| Final report | Both RF & GB tied | Single winner declared |
+| Statistical tests | None | Wilcoxon (CV fold comparison) + McNemar (test-set error comparison) |
+| Model interpretability | None | SHAP — per-feature contribution for best model |
+| Hyperparameter diagnostics | None | Validation curve (learning_rate sweep) |
+| Final report | Both RF & GB tied | Single winner declared with statistical proof |
 
 ---
 
@@ -56,38 +62,46 @@
 Phase I dataset (1,550 × 20)
         │
         ▼
-  train_test_split (stratified, 80/20)
+  train_test_split (stratified, 80/20, RANDOM_STATE=42)
         │
-        ├──── X_train_raw (1,240 × 19) ──── StandardScaler + OneHotEncoder ──▶ X_train_proc (1,240 × 25)
-        │                                                                                │
-        │                                                                    balance_training_split
-        │                                                                       (already balanced)
-        │                                                                                │
-        │                                                                    Feature Selection (RF)
-        │                                                                       25 → 9 features
-        │                                                                                │
-        │                                                            ┌───────────────────┤
-        │                                                            │  RandomizedSearchCV│
-        │                                                            │  (5-fold Stratified│
-        │                                                            │   KFold, F1 macro) │
-        │                                                            ├────────────────────┤
-        │                                                            │ Logistic Regression│
-        │                                                            │ Random Forest      │
-        │                                                            │ Gradient Boosting  │
-        │                                                            │ SVM (Linear)       │
-        │                                                            │ MLP                │
-        │                                                            └─────────┬──────────┘
-        │                                                                      │
-        └──── X_test_raw (310 × 19) ──────── transform ──────── X_test_sel ───▶ Evaluate
-                                                                                │
-                                                         ┌──────────────────────┤
-                                                         │  Metrics             │
-                                                         │  Confusion Matrices  │
-                                                         │  ROC-AUC             │
-                                                         │  Calibration Curves  │
-                                                         │  Learning Curves     │
-                                                         │  Wilcoxon Test       │
-                                                         └──────────────────────┘
+        ├── X_train_raw (1,240 × 19) ── StandardScaler + OneHotEncoder ──▶ X_train_proc (1,240 × 25)
+        │                                                                            │
+        │                                                                balance_training_split
+        │                                                                  (already balanced → skip)
+        │                                                                            │
+        │                                                                Feature Selection (RF)
+        │                                                                   25 → 9 features
+        │                                                                            │
+        │                                                        ┌───────────────────┤
+        │                                                        │  RandomizedSearchCV│
+        │                                                        │  5-fold Stratified │
+        │                                                        │  KFold, F1 macro   │
+        │                                                        ├────────────────────┤
+        │                                                        │ Logistic Regression│
+        │                                                        │ Random Forest      │
+        │                                                        │ Gradient Boosting  │
+        │                                                        │ SVM (Linear)       │
+        │                                                        │ MLP                │
+        │                                                        └────────┬───────────┘
+        │                                                                 │
+        └── X_test_raw (310 × 19) ──── transform ──── X_test_sel ────────▶ Evaluate
+                                                                           │
+                              ┌────────────────────────────────────────────┤
+                              │  Core Metrics                              │
+                              │    Accuracy, Precision, Recall, F1, AUC   │
+                              │    Confusion Matrices (5 models)           │
+                              │    ROC-AUC Curves (5 models, macro OvR)    │
+                              │    Calibration Curves                      │
+                              │    Learning Curves (sklearn)               │
+                              ├────────────────────────────────────────────┤
+                              │  Statistical Tests                         │
+                              │    Wilcoxon: CV fold-by-fold comparison    │
+                              │    McNemar: Ph2 GB vs Ph3 Best (test set)  │
+                              ├────────────────────────────────────────────┤
+                              │  Interpretability & Diagnostics            │
+                              │    SHAP: per-feature contributions (best)  │
+                              │    Validation Curve: learning_rate sweep   │
+                              └────────────────────────────────────────────┘
 ```
 
 ---
@@ -756,7 +770,160 @@ $$P(W^+ = 15) = \frac{1}{2^5} = \frac{1}{32} = 0.03125 < 0.05$$
 
 ---
 
-## 12. Results
+## 12. Additional Analysis Tools
+
+Three tools were added in Phase III specifically to go beyond scalar metrics and answer deeper questions: *why does the model decide this way?*, *is it actually better than Phase II on individual predictions?*, and *how sensitive is the best model to its key hyperparameter?*
+
+---
+
+### 12.1 McNemar's Test — Phase II vs Phase III
+
+#### What it is
+
+McNemar's test is a **non-parametric paired test** that compares two classifiers on the *exact same test set*. While Wilcoxon compares cross-validation fold scores (training-time estimate), McNemar compares actual prediction errors on held-out data — a stronger, more direct comparison.
+
+#### Why not just compare accuracy?
+
+If Phase II has Accuracy=99.03% and Phase III has Accuracy=99.03%, you cannot tell from the scalar metric alone whether the *same* 3 samples are misclassified or whether Phase III is right where Phase II is wrong (and vice versa). McNemar's test directly probes this.
+
+#### Setup in Phase III
+
+1. A **Phase II–equivalent Gradient Boosting** model is retrained on the same feature-selected training set (`X_train_sel`) using approximate Phase II best parameters:
+   ```
+   n_estimators=200, learning_rate=0.1, max_depth=3,
+   subsample=1.0, min_samples_split=2
+   ```
+2. Both models are evaluated on the **identical** `X_test_sel` (310 samples)
+
+#### The Contingency Table
+
+|  | **Ph3 correct** | **Ph3 wrong** |
+|---|---|---|
+| **Ph2 correct** | $a$ (both right) | $c$ (Ph2 right, Ph3 wrong) |
+| **Ph2 wrong** | $b$ (Ph2 wrong, Ph3 right) | $d$ (both wrong) |
+
+Under $H_0$: $b = c$ (both classifiers make the same number of discordant errors).
+
+#### Test Statistic (Exact Binomial)
+
+The exact McNemar test uses the binomial distribution on the discordant pairs $(b, c)$:
+
+$$p\text{-value} = 2 \sum_{k=0}^{\min(b,c)} \binom{b+c}{k} \left(\frac{1}{2}\right)^{b+c}$$
+
+This is the probability of observing a split as extreme as $(b, c)$ by chance if both classifiers truly have the same error distribution. When $b > c$ and $p < 0.05$, Phase III makes significantly fewer errors.
+
+#### Why McNemar over a z-test?
+
+McNemar's test accounts for the **paired** (correlated) nature of the predictions — both models see the same test sample. An unpaired test like the z-test for proportions would be incorrect because the independence assumption would be violated (the same sample is predicted by both models).
+
+---
+
+### 12.2 SHAP — Model Interpretability
+
+#### What SHAP is
+
+**SHapley Additive exPlanations** (Lundberg & Lee, 2017) assigns a contribution value $\phi_j$ to each feature $j$ for a specific prediction. It is grounded in **cooperative game theory** — each feature is treated as a "player" and its SHAP value is its fair share of the total prediction.
+
+#### The Shapley Value Formula
+
+For a model $f$, the SHAP value of feature $j$ for sample $\mathbf{x}$ is:
+
+$$\phi_j(\mathbf{x}) = \sum_{S \subseteq F \setminus \{j\}} \frac{|S|!\,(|F|-|S|-1)!}{|F|!} \left[f(S \cup \{j\}) - f(S)\right]$$
+
+Where:
+- $F$ = full set of features
+- $S$ = a subset of features **not including** $j$
+- $f(S)$ = model output using only features in $S$ (others replaced by their marginal expectation)
+- The fraction is a **weighting factor** that averages over all possible orderings of features
+
+This is computationally intractable for large $|F|$ — the exact calculation requires $2^{|F|}$ model evaluations.
+
+#### TreeSHAP (Efficient Exact Computation)
+
+For tree ensembles (Random Forest, Gradient Boosting), **TreeSHAP** computes exact Shapley values in **polynomial time** $O(TLD^2)$ by exploiting the tree structure:
+- $T$ = number of trees
+- $L$ = max leaves per tree
+- $D$ = max depth
+
+The key insight: traversing a single path in a decision tree already conditions on a subset of features. TreeSHAP reuses these traversals to compute exact Shapley values without any approximation.
+
+#### What the Plots Show
+
+**Global importance bar chart** (`shap_feature_importance.png`):
+
+$$\text{Importance}(j) = \frac{1}{n} \sum_{i=1}^{n} \frac{1}{K} \sum_{k=1}^{K} |\phi_j^{(k)}(\mathbf{x}_i)|$$
+
+Mean absolute SHAP value averaged over samples and classes. Features with high values here push predictions away from the baseline most strongly, regardless of direction.
+
+**Beeswarm plot** (`shap_beeswarm.png`):
+
+For one class (e.g., `High`), each dot is one test sample. The x-axis is the SHAP value (positive = pushes toward `High`, negative = pushes away). Color encodes the feature's actual value (red = high, blue = low). This plot shows:
+- Which features are most discriminative
+- Whether high feature values drive higher or lower predictions
+- Outlier samples that are hard to classify
+
+#### Why SHAP over standard feature importance?
+
+| | Gini Importance | Permutation Importance | SHAP |
+|---|---|---|---|
+| Accounts for feature interactions | No | Partially | Yes |
+| Per-sample explanation | No | No | Yes |
+| Consistent across model types | No | Yes | Yes |
+| Exact (not approximated) for trees | N/A | No | **Yes** |
+| Handles correlated features | Poorly | Poorly | Better |
+
+Standard Gini importance counts how often a feature is used and the average impurity decrease — it overestimates correlated features and gives no information about direction. SHAP values are unique and satisfy the **efficiency**, **symmetry**, **dummy**, and **additivity** axioms from game theory.
+
+---
+
+### 12.3 Validation Curve — Hyperparameter Sensitivity
+
+#### What it shows
+
+A validation curve plots the model's training and validation F1 score as a single hyperparameter varies, with all others held fixed. It answers:
+
+> *"How sensitive is the model's performance to this hyperparameter? Where is the optimum? Does the model overfit for large values?"*
+
+#### Why learning_rate for Gradient Boosting?
+
+`learning_rate` (shrinkage $\eta$) is Gradient Boosting's most influential single hyperparameter. It directly controls:
+- **Underfitting** (low $\eta$, too few trees): high bias, both curves low
+- **Good fit** (moderate $\eta$): train ≈ validation, both high
+- **Overfitting** (high $\eta$): training curve stays high, validation drops
+
+This makes it the most informative axis for a diagnostic plot.
+
+#### Implementation
+
+The sweep uses `sklearn.model_selection.validation_curve` (sklearn fallback, since Yellowbrick is incompatible with Python 3.14 due to the removal of the `distutils` module in Python 3.12+):
+
+```python
+param_range = [0.005, 0.01, 0.03, 0.05, 0.1, 0.15, 0.2, 0.3]
+
+train_scores, val_scores = validation_curve(
+    estimator,
+    X_train, y_train,
+    param_name="learning_rate",
+    param_range=param_range,
+    cv=StratifiedKFold(n_splits=5),
+    scoring="f1_macro",
+)
+```
+
+For each value in `param_range`, the estimator is fit 5 times (once per fold). The mean ± std of training and validation scores are plotted. The x-axis uses a log scale since `learning_rate` spans two orders of magnitude.
+
+#### Learning Curve (sklearn)
+
+Also generated: a **learning curve** that shows how F1 varies with training set size (10% → 100%). This diagnoses:
+- **High bias** (underfitting): both curves plateau below 1.0
+- **High variance** (overfitting): training curve >> validation curve with a large gap
+- **Good fit**: curves converge near 1.0 as training size grows
+
+The Phase III best model (Gradient Boosting) shows curves that converge quickly → the model is not data-hungry and is not overfitting.
+
+---
+
+## 13. Results
 
 ### Full Phase III Results Table
 
@@ -781,7 +948,7 @@ ROC-AUC (macro) : 0.9999
 
 ---
 
-## 13. Phase II vs Phase III Comparison
+## 14. Phase II vs Phase III Comparison
 
 | Model | Ph2 F1 | Ph3 F1 | Delta F1 | Ph2 CV F1 | Ph3 CV F1 |
 |---|---|---|---|---|---|
@@ -800,31 +967,43 @@ ROC-AUC (macro) : 0.9999
 
 ---
 
-## 14. Output Files
+## 15. Output Files
+
+### CSV / Text Reports
 
 | File | Description |
 |---|---|
 | `model_results_phase3.csv` | All 5 model metrics + best hyperparameters |
-| `comparison_phase2_vs_phase3.csv` | Phase II vs III delta table |
+| `comparison_phase2_vs_phase3.csv` | Phase II vs III delta table (F1, CV F1, Accuracy) |
 | `classification_reports_phase3.txt` | Full per-class precision/recall/F1 for all models |
-| `wilcoxon_results.txt` | Statistical significance test results |
+| `wilcoxon_results.txt` | Wilcoxon signed-rank test: GB vs each other model (5 folds) |
+| `mcnemar_results.txt` | McNemar's test: Phase II GB vs Phase III best (test-set errors) |
 | `final_report_phase3.md` | Executive summary report |
-| `algorithm_comparison_phase3.png` | Grouped bar chart: Accuracy, Precision, Recall, F1 |
-| `phase2_vs_phase3_comparison.png` | Side-by-side F1 with delta annotations |
-| `feature_selection.png` | Importance bars (blue=kept, red=removed) with threshold line |
-| `feature_importance_phase3.png` | Top features by RF importance (post-selection) |
-| `learning_curves_phase3.png` | Train vs. validation F1 across training set sizes |
-| `roc_auc_curves_phase3.png` | Macro-average ROC curves for all models |
-| `calibration_curves_phase3.png` | Predicted probability vs. actual fraction per class |
-| `confusion_matrix_gradient_boosting.png` | 3×3 heatmap — best model |
-| `confusion_matrix_random_forest.png` | 3×3 heatmap |
-| `confusion_matrix_logistic_regression.png` | 3×3 heatmap |
-| `confusion_matrix_svm_linear.png` | 3×3 heatmap |
-| `confusion_matrix_neural_network_mlp.png` | 3×3 heatmap |
+
+### Core Visualizations
+
+| File | What it shows | Why it matters |
+|---|---|---|
+| `algorithm_comparison_phase3.png` | Grouped bar chart: Accuracy, Precision, Recall, F1 for all 5 models | Quick visual comparison at a glance |
+| `phase2_vs_phase3_comparison.png` | Side-by-side F1 bars (Ph2 vs Ph3) with Δ annotations | Directly shows which models improved and by how much |
+| `feature_selection.png` | Importance bars (blue=kept, red=removed) + threshold line | Shows which features were eliminated and why |
+| `feature_importance_phase3.png` | Top features by RF Gini importance after selection | Which features drive the ensemble's splits |
+| `roc_auc_curves_phase3.png` | Macro-average ROC curves for all 5 models | Evaluates probability quality, not just hard predictions |
+| `calibration_curves_phase3.png` | Predicted probability vs. actual fraction per class | Checks if predicted 0.8 actually means 80% of the time |
+| `confusion_matrix_*.png` | 3×3 heatmap for each model (5 files) | Per-class error pattern — which classes get confused |
+
+### Diagnostic & Interpretability Plots
+
+| File | What it shows | Why it matters |
+|---|---|---|
+| `learning_curves_phase3.png` | Train vs. validation F1 as training size grows | Diagnoses bias-variance; proves model is not overfitting |
+| `shap_feature_importance.png` | Mean \|SHAP\| per feature (global) — best model | Model-theory–based importance; accounts for interactions and direction |
+| `shap_beeswarm.png` | Per-sample SHAP values for one class — best model | Shows how individual samples are explained; reveals outliers |
+| `yellowbrick_validation_curve.png` | F1 vs `learning_rate` sweep for GB | Reveals optimal learning rate and sensitivity to this hyperparameter |
 
 ---
 
-## 15. Konkluzionet dhe Impakti i Projektit
+## 16. Konkluzionet dhe Impakti i Projektit
 
 ### Konkluzionet në lidhje me rezultatet
 Pas tre fazave të eksperimentimit intensiv, përfundojmë se modeli Gradient Boosting (dhe ngjashëm Random Forest) arrin të parashikojë me saktësi pothuajse perfekte (Accuracy 99.03%, F1 0.9992) varësinë thelbësore mes variablave (energjia e rinovueshme, koha, etj.) dhe nivelit ditor të karbonit në Kosovë. Modelet dëshmuan se zgjedhja e targetit në tre klasa dhe inxhinieria e veçorive në Fazën I kanë qenë jashtëzakonisht efikase, duke filtruar zhurmën (prej 25 veçori në 9 themelore). Faza III plotësoi me sukses këtë detyrë, jo thjesht numerikisht, por duke e lidhur atë me rëndësi statistikore.
@@ -854,3 +1033,6 @@ Si zhvillime të së ardhmes, modeli ditor mund të ngushtohet në një version 
 - Chawla, N. V. et al. (2002). *SMOTE: Synthetic Minority Over-sampling Technique*. JAIR, 16, 321–357.
 - He, H. et al. (2008). *ADASYN: Adaptive Synthetic Sampling Approach*. IJCNN 2008.
 - Wilcoxon, F. (1945). *Individual Comparisons by Ranking Methods*. Biometrics Bulletin, 1(6), 80–83.
+- McNemar, Q. (1947). *Note on the Sampling Error of the Difference Between Correlated Proportions or Percentages*. Psychometrika, 12(2), 153–157.
+- Lundberg, S. M., & Lee, S.-I. (2017). *A Unified Approach to Interpreting Model Predictions*. NeurIPS 2017.
+- Lundberg, S. M. et al. (2020). *From Local Explanations to Global Understanding with Explainable AI for Trees*. Nature Machine Intelligence, 2, 56–67.
