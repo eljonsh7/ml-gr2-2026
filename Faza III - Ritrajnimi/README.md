@@ -1,132 +1,133 @@
 # Faza III - Ritrajnimi: Optimizimi dhe Fine-Tuning i Modeleve
 
-## Table of Contents
-1. [Overview](#1-overview)
-2. [What Changed from Phase II](#2-what-changed-from-phase-ii)
-3. [Pipeline Architecture](#3-pipeline-architecture)
-4. [Step 0 — Data Loading & Splitting](#4-step-0--data-loading--splitting)
-5. [Step 1 — Preprocessing](#5-step-1--preprocessing)
-6. [Step 2 — Class Balance Check](#6-step-2--class-balance-check)
-7. [Step 3 — Feature Selection](#7-step-3--feature-selection)
-8. [Step 4 — Hyperparameter Search Strategy](#8-step-4--hyperparameter-search-strategy)
-9. [Algorithms — Full Mathematical Treatment](#9-algorithms--full-mathematical-treatment)
-   - [9.1 Logistic Regression](#91-logistic-regression)
-   - [9.2 Random Forest](#92-random-forest)
+## Tabela e Përmbajtjes
+1. [Përmbledhje](#1-përmbledhje)
+2. [Çfarë Ndryshoi nga Faza II](#2-çfarë-ndryshoi-nga-faza-ii)
+3. [Arkitektura e Pipeline-it](#3-arkitektura-e-pipeline-it)
+4. [Hapi 0 - Ngarkimi dhe Ndarja e të Dhënave](#4-hapi-0--ngarkimi-dhe-ndarja-e-të-dhënave)
+5. [Hapi 1 - Paraprocesimi](#5-hapi-1--paraprocesimi)
+6. [Hapi 2 - Kontrolli i Balancës së Klasave](#6-hapi-2--kontrolli-i-balancës-së-klasave)
+7. [Hapi 3 - Zgjedhja e Veçorive](#7-hapi-3--zgjedhja-e-veçorive)
+8. [Hapi 4 - Strategjia e Kërkimit të Hiperparametrave](#8-hapi-4--strategjia-e-kërkimit-të-hiperparametrave)
+9. [Algoritmet - Trajtim i Plotë Matematikor](#9-algoritmet--trajtim-i-plotë-matematikor)
+   - [9.1 Regresioni Logjistik](#91-regresioni-logjistik)
+   - [9.2 Isolation Forest](#92-pylli-i-rastit)
    - [9.3 Gradient Boosting](#93-gradient-boosting)
-   - [9.4 SVM Linear](#94-support-vector-machine--linear-kernel)
-   - [9.5 Neural Network (MLP)](#95-neural-network--multi-layer-perceptron)
-10. [Evaluation Metrics — Full Formulas](#10-evaluation-metrics--full-formulas)
-11. [Statistical Significance — Wilcoxon Signed-Rank Test](#11-statistical-significance--wilcoxon-signed-rank-test)
-12. [Additional Analysis Tools](#12-additional-analysis-tools)
-    - [12.1 McNemar's Test — Phase II vs Phase III](#121-mcnemars-test--phase-ii-vs-phase-iii)
-    - [12.2 SHAP — Model Interpretability](#122-shap--model-interpretability)
-    - [12.3 Validation Curve — Hyperparameter Sensitivity](#123-validation-curve--hyperparameter-sensitivity)
-13. [Results](#13-results)
-14. [Phase II vs Phase III Comparison](#14-phase-ii-vs-phase-iii-comparison)
-15. [Output Files](#15-output-files)
+   - [9.4 SVM Linear](#94-makina-me-vektora-mbështetës--bërthama-lineare)
+   - [9.5 Rrjeti Nervor (MLP)](#95-rrjeti-nervor--perceptroni-shumështresor)
+10. [Metrikat e Vlerësimit - Formula të Plota](#10-metrikat-e-vlerësimit--formula-të-plota)
+11. [Rëndësia Statistikore - Testi Wilcoxon Signed-Rank](#11-rëndësia-statistikore--testi-wilcoxon-signed-rank)
+12. [Mjetet Shtesë të Analizës](#12-mjetet-shtesë-të-analizës)
+    - [12.1 Testi McNemar - Faza II vs Faza III](#121-testi-mcnemar--faza-ii-vs-faza-iii)
+    - [12.2 SHAP - Interpretueshmëria e Modelit](#122-shap--interpretueshmëria-e-modelit)
+    - [12.3 Kurba e Validimit - Ndjeshmëria ndaj Hiperparametrave](#123-kurba-e-validimit--ndjeshmëria-ndaj-hiperparametrave)
+13. [Rezultatet](#13-rezultatet)
+14. [Krahasimi Faza II vs Faza III](#14-krahasimi-faza-ii-vs-faza-iii)
+15. [Skedarët e Prodhuar](#15-skedarët-e-prodhuar)
+16. [Konkluzionet dhe Impakti i Projektit](#16-konkluzionet-dhe-impakti-i-projektit)
 
 ---
 
-## 1. Overview
+## 1. Përmbledhje
 
-**Goal:** Take the five best-performing supervised algorithms from Phase II, widen their hyperparameter search space, and identify a single statistically superior model for predicting the daily carbon intensity class of Kosovo's power grid.
+**Qëllimi:** Të merren pesë algoritmet suprevizuara me performancën më të lartë nga Faza II, të zgjerohet hapësira e kërkimit të hiperparametrave dhe të identifikohet një model i vetëm statistikisht superior për parashikimin e klasës ditore të intensitetit të karbonit në rrjetin elektrik të Kosovës.
 
-**Target variable:** `target_quantile_class` — three classes: `High`, `Medium`, `Low`
+**Variabla e synuar:** `target_quantile_class` - tre klasa: `High`, `Medium`, `Low`
 
-**Input:** `feature_engineered_dataset.csv` from Phase I (1,550 rows × 20 columns)
+**Inputi:** `feature_engineered_dataset.csv` nga Faza I (1,550 rreshta × 20 kolona)
 
-**Decision removed from Phase II:** SVM (RBF) — Phase II CV F1 = 0.9599, lowest of all six models. Its additional flexibility brought no gain over the linear kernel, confirming that the dominant structure in this dataset is not well-captured by a radial basis function.
-
----
-
-## 2. What Changed from Phase II
-
-| Aspect | Phase II | Phase III |
-|---|---|---|
-| Models | 6 (incl. SVM RBF) | 5 (SVM RBF removed) |
-| Search method | `GridSearchCV` | `RandomizedSearchCV` |
-| CV folds | 3 | 5 |
-| Parameter ranges | Narrow | Wide (3–5× more values) |
-| Feature selection | None | RF-importance threshold (25 → 9) |
-| Metrics | Accuracy, Precision, Recall, F1 | + ROC-AUC (macro, OvR) |
-| Statistical tests | None | Wilcoxon (CV fold comparison) + McNemar (test-set error comparison) |
-| Model interpretability | None | SHAP — per-feature contribution for best model |
-| Hyperparameter diagnostics | None | Validation curve (learning_rate sweep) |
-| Final report | Both RF & GB tied | Single winner declared with statistical proof |
+**Vendimi i hequr nga Faza II:** SVM (RBF) - CV F1 = 0.9599 në Fazën II, më i ulëti ndër të gjashtë modelet. Fleksibiliteti i tij shtesë nuk solli asnjë fitim ndaj bërthamës lineare, duke konfirmuar se struktura dominante në këtë dataset nuk kapet mirë nga një funksion bazë radial.
 
 ---
 
-## 3. Pipeline Architecture
+## 2. Çfarë Ndryshoi nga Faza II
+
+| Aspekti | Faza II | Faza III                                                                   |
+|---|---|----------------------------------------------------------------------------|
+| Modelet | 6 (me SVM RBF) | 5 (SVM RBF hiqet)                                                          |
+| Metoda e kërkimit | `GridSearchCV` | `RandomizedSearchCV`                                                       |
+| Fold-et CV | 3 | 5                                                                          |
+| Hapësirat e parametrave | Të ngushta | Të gjera (3–5× më shumë vlera)                                             |
+| Zgjedhja e veçorive | Asnjë | Pragu i nevojës RF (25 → 9)                                            |
+| Metrikat | Accuracy, Precision, Recall, F1 | + ROC-AUC (macro, OvR)                                                     |
+| Testet statistikore | Asnjë | Wilcoxon (krahasim fold-to-fold) + McNemar (krahasim gabimesh në test set) |
+| Interpretueshmëria e modelit | Asnjë | SHAP - kontributi për-veçori i modelit më të mirë                          |
+| Diagnostikimi i hiperparametrave | Asnjë | Kurba e validimit (sweep i learning_rate)                                  |
+| Raporti final | RF dhe GB barabar | Fitues i vetëm me provë statistikore                                       |
+
+---
+
+## 3. Arkitektura e Pipeline-it
 
 ```
-Phase I dataset (1,550 × 20)
+Dataset i Fazës I (1,550 × 20)
         │
         ▼
-  train_test_split (stratified, 80/20, RANDOM_STATE=42)
+  train_test_split (stratifikuar, 80/20, RANDOM_STATE=42)
         │
         ├── X_train_raw (1,240 × 19) ── StandardScaler + OneHotEncoder ──▶ X_train_proc (1,240 × 25)
         │                                                                            │
         │                                                                balance_training_split
-        │                                                                  (already balanced → skip)
+        │                                                                  (tashmë balancuar → kalohet)
         │                                                                            │
-        │                                                                Feature Selection (RF)
-        │                                                                   25 → 9 features
+        │                                                                Zgjedhja e Veçorive (RF)
+        │                                                                   25 → 9 veçori
         │                                                                            │
         │                                                        ┌───────────────────┤
         │                                                        │  RandomizedSearchCV│
         │                                                        │  5-fold Stratified │
         │                                                        │  KFold, F1 macro   │
         │                                                        ├────────────────────┤
-        │                                                        │ Logistic Regression│
-        │                                                        │ Random Forest      │
+        │                                                        │ Regresion Logjistik│
+        │                                                        │ Isolation Forest     │
         │                                                        │ Gradient Boosting  │
         │                                                        │ SVM (Linear)       │
         │                                                        │ MLP                │
         │                                                        └────────┬───────────┘
         │                                                                 │
-        └── X_test_raw (310 × 19) ──── transform ──── X_test_sel ────────▶ Evaluate
+        └── X_test_raw (310 × 19) ──── transform ──── X_test_sel ────────▶ Vlerëso
                                                                            │
                               ┌────────────────────────────────────────────┤
-                              │  Core Metrics                              │
+                              │  Metrikat Kryesore                         │
                               │    Accuracy, Precision, Recall, F1, AUC   │
-                              │    Confusion Matrices (5 models)           │
-                              │    ROC-AUC Curves (5 models, macro OvR)    │
-                              │    Calibration Curves                      │
-                              │    Learning Curves (sklearn)               │
+                              │    Matrica Konfuzioni (5 modele)           │
+                              │    Kurba ROC-AUC (5 modele, macro OvR)    │
+                              │    Kurba Kalibrimi                         │
+                              │    Kurbat e të Mësuarit (sklearn)          │
                               ├────────────────────────────────────────────┤
-                              │  Statistical Tests                         │
-                              │    Wilcoxon: CV fold-by-fold comparison    │
-                              │    McNemar: Ph2 GB vs Ph3 Best (test set)  │
+                              │  Testet Statistikore                       │
+                              │    Wilcoxon: krahasim fold-to-fold CV      │
+                              │    McNemar: Ph2 GB vs Ph3 Fituesi (test)   │
                               ├────────────────────────────────────────────┤
-                              │  Interpretability & Diagnostics            │
-                              │    SHAP: per-feature contributions (best)  │
-                              │    Validation Curve: learning_rate sweep   │
+                              │  Interpretueshmëria dhe Diagnostika        │
+                              │    SHAP: kontributet për-veçori (fituesi)  │
+                              │    Kurba Validimi: sweep i learning_rate   │
                               └────────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. Step 0 — Data Loading & Splitting
+## 4. Hapi 0 - Ngarkimi dhe Ndarja e të Dhënave
 
-### Stratified Train/Test Split
+### Ndarja Stratifikuar Train/Test
 
-The dataset is split 80% train / 20% test using `stratify=y`:
+Dataseti ndahet 80% trajnim / 20% testim duke përdorur `stratify=y`:
 
 ```
-RANDOM_STATE = 42   (guarantees reproducibility and identical split to Phase II)
+RANDOM_STATE = 42   (garanton riprodhueshmëri dhe ndarje identike me Fazën II)
 test_size    = 0.2
 
-Train: 1,240 rows
-Test:    310 rows
+Trajnim: 1,240 rreshta
+Testim:    310 rreshta
 ```
 
-**Why stratification?**
-Without stratification, a random split might by chance put more `High` samples in the test set and fewer in training. Stratification enforces that the class proportions in both sets match the original dataset. Formally, if class $k$ has proportion $p_k$ in the full dataset, stratification guarantees:
+**Pse stratifikim?**
+Pa stratifikim, një ndarje rastësore mund të vendosë rastësisht më shumë mostra `High` në test set dhe më pak në trajnim. Stratifikimi siguron që proporcionet e klasave në të dy set-et të përputhen me datasetin origjinal. Formalisht, nëse klasa $k$ ka proporcion $p_k$ në datasetin e plotë, stratifikimi garanton:
 
-$$\frac{n_k^{\text{train}}}{n^{\text{train}}} \approx \frac{n_k^{\text{test}}}{n^{\text{test}}} \approx p_k$$
+$$\frac{n_k^{\text{trajnim}}}{n^{\text{trajnim}}} \approx \frac{n_k^{\text{testim}}}{n^{\text{testim}}} \approx p_k$$
 
-**Test set class distribution (actual):**
-| Class | Count | Share |
+**Shpërndarja e klasave në test set (aktuale):**
+| Klasa | Numri | Përqindja |
 |---|---|---|
 | Medium | 106 | 34.2% |
 | High | 105 | 33.9% |
@@ -134,203 +135,203 @@ $$\frac{n_k^{\text{train}}}{n^{\text{train}}} \approx \frac{n_k^{\text{test}}}{n
 
 ---
 
-## 5. Step 1 — Preprocessing
+## 5. Hapi 1 - Paraprocesimi
 
-Preprocessing is fit **only on the training set** and then applied to the test set. Fitting on the full dataset before splitting is data leakage — the model would have indirect knowledge of test statistics.
+Paraprocesimi aplikohet **vetëm mbi set-in e trajnimit** dhe më pas aplikohet mbi test set-in. Aplikimi mbi datasetin e plotë para ndarjes është rrjedhje e të dhënave (data leakage) - modeli do të kishte njohuri indirekte mbi statistikat e test set-it.
 
-### 5.1 StandardScaler (Numeric Columns)
+### 5.1 StandardScaler (Kolonat Numerike)
 
-Each numeric feature $x_j$ is transformed to zero mean and unit variance:
+Çdo veçori numerike $x_j$ transformohet në mesatare zero dhe variancë njësi:
 
 $$z_j = \frac{x_j - \mu_j}{\sigma_j}$$
 
-Where:
-- $\mu_j = \frac{1}{n} \sum_{i=1}^{n} x_{ij}$ — mean of feature $j$ over the training set
-- $\sigma_j = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (x_{ij} - \mu_j)^2}$ — standard deviation
+Ku:
+- $\mu_j = \frac{1}{n} \sum_{i=1}^{n} x_{ij}$ - mesatarja e veçorisë $j$ mbi set-in e trajnimit
+- $\sigma_j = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (x_{ij} - \mu_j)^2}$ - devijimi standard
 
-**Why?** Algorithms like Logistic Regression, SVM, and MLP optimize a loss function using gradient-based methods. A feature with values in [0, 10,000] would produce gradients 1,000× larger than a feature with values in [0, 10], causing the optimizer to move disproportionately in that direction. Standardization removes this scale dependence.
+**Pse?** Algoritmet si Regresioni Logjistik, SVM dhe MLP optimizojnë një funksion humbje me metoda të bazuara në gradient. Një veçori me vlera në [0, 10,000] do të prodhonte gradienta 1,000× më të mëdha se një veçori me vlera në [0, 10], duke bërë optimizuesin të lëvizë në mënyrë disproporcionale. Standardizimi eliminon këtë varësi nga shkalla.
 
-Tree-based models (Random Forest, Gradient Boosting) are scale-invariant — they split on thresholds and only care about feature ordering, not magnitude. StandardScaler does not hurt them either.
+Modelet e bazuara në pemë (Isolation Forest, Gradient Boosting) janë invariante nga shkalla - ato ndajnë mbi praga dhe kujdesen vetëm për renditjen e veçorive, jo për madhësinë. StandardScaler nuk i dëmton as ato.
 
-### 5.2 OneHotEncoder (Categorical Columns)
+### 5.2 OneHotEncoder (Kolonat Kategorike)
 
-Each categorical feature with $K$ unique categories is replaced by $K$ binary columns:
+Çdo veçori kategorike me $K$ kategori unike zëvendësohet me $K$ kolona binare:
 
 $$x_j \in \{c_1, c_2, \ldots, c_K\} \longrightarrow [0, 0, \ldots, 1, \ldots, 0] \in \{0,1\}^K$$
 
-**Parameters used:**
-- `handle_unknown="ignore"` — if the test set contains a category not seen during training, all its indicator columns are set to 0 rather than raising an error
-- `sparse_output=False` — returns a dense NumPy array for compatibility with all downstream estimators
+**Parametrat e përdorur:**
+- `handle_unknown="ignore"` - nëse test set-i përmban një kategori që nuk është parë gjatë trajnimit, të gjitha kolonat e saj tregues vendosen në 0 në vend që të ngrihet një gabim
+- `sparse_output=False` - kthen një array të dendur NumPy për përputhshmëri me të gjithë estimatorët vijues
 
-**Why not ordinal encoding?** Ordinal encoding (e.g., `Low=0, Medium=1, High=2`) implies an ordering that does not exist for arbitrary categorical variables. One-hot encoding makes no such assumption.
+**Pse jo kodimi ordinal?** Kodimi ordinal (p.sh., `Low=0, Medium=1, High=2`) nënkupton një renditje që nuk ekziston për variablat kategorike arbitrare. Kodimi one-hot nuk bën supozime të tilla.
 
-**Result after preprocessing:** 25 features (from 19 raw; extra columns from one-hot expanding categorical variables).
-
----
-
-## 6. Step 2 — Class Balance Check
-
-Evaluated **only on the training split** (checking the test set would be leakage — models are evaluated on the test set as-is).
-
-**Threshold rule:**
-$$\text{If } \min_k \left(\frac{n_k}{n}\right) \geq 0.20 \Rightarrow \text{balanced, skip resampling}$$
-
-**Result in this run:** Training split was naturally balanced → `"Skipped (already balanced)"`
-
-If imbalanced, the pipeline applies:
-
-### SMOTE — Synthetic Minority Over-sampling Technique
-
-For each minority sample $\mathbf{x}_i$, select one of its $k$ nearest neighbors $\mathbf{x}_{nn}$ uniformly at random and create:
-
-$$\mathbf{x}_{\text{new}} = \mathbf{x}_i + \lambda \cdot (\mathbf{x}_{nn} - \mathbf{x}_i), \quad \lambda \sim \text{Uniform}(0, 1)$$
-
-This generates synthetic samples **along the line segment** between real minority class points.
-
-**Condition:** Used when $\min(n_k) \geq 6$ (enough neighbors for stable interpolation).
-
-### ADASYN — Adaptive Synthetic Sampling
-
-ADASYN improves on SMOTE by generating **more synthetic samples near the decision boundary** — i.e., around minority class points that are surrounded by majority class points and therefore harder to classify correctly.
-
-For each minority sample $\mathbf{x}_i$, compute:
-
-$$r_i = \frac{\Delta_i}{k}, \quad \Delta_i = \text{number of majority-class samples among } k \text{ nearest neighbors of } \mathbf{x}_i$$
-
-Then normalize: $\hat{r}_i = r_i / \sum_j r_j$
-
-The number of synthetic samples generated for $\mathbf{x}_i$ is $G \cdot \hat{r}_i$, where $G$ is the total synthetic samples needed. Samples near the boundary (high $r_i$) get more synthetic neighbors.
-
-**Condition:** Used when $\min(n_k) < 6$ (SMOTE needs at least 6 neighbors).
+**Rezultati pas paraprocesimit:** 25 veçori (nga 19 të papërpunuara; kolona shtesë nga zgjerimi one-hot i variablave kategorike).
 
 ---
 
-## 7. Step 3 — Feature Selection
+## 6. Hapi 2 - Kontrolli i Balancës së Klasave
 
-A preliminary Random Forest (100 trees) is trained on the balanced training set to compute **Gini-based feature importances**.
+Vlerësohet **vetëm mbi ndarjen e trajnimit** (kontrolli i test set-it do të ishte rrjedhje - modelet vlerësohen mbi test set-in siç është).
 
-### Feature Importance Formula (Mean Decrease in Impurity)
+**Rregulli i pragut:**
+$$\text{Nëse } \min_k \left(\frac{n_k}{n}\right) \geq 0.20 \Rightarrow \text{i balancuar, kalohet risamplimet}$$
 
-For a single decision tree, the importance of feature $j$ is:
+**Rezultati në këtë ekzekutim:** Ndarja e trajnimit ishte natyrshëm e balancuar → `"Skipped (already balanced)"`
 
-$$I(j) = \sum_{t \in \text{nodes where } j \text{ is used}} \frac{n_t}{n} \cdot \Delta \text{Gini}(t)$$
+Nëse është i pabalancuar, pipeline-i aplikon:
 
-Where:
-- $n_t$ = number of training samples reaching node $t$
-- $n$ = total training samples
-- $\Delta \text{Gini}(t) = \text{Gini}(t) - \frac{n_L}{n_t}\text{Gini}(t_L) - \frac{n_R}{n_t}\text{Gini}(t_R)$ — impurity decrease at split $t$
-- $\text{Gini}(t) = 1 - \sum_{k} p_k^2$ — Gini impurity at node $t$
+### SMOTE - Teknika e shtimit të Minoritetit Sintetik
 
-For a Random Forest, the importance is averaged over all trees and normalized to sum to 1.
+Për çdo mostër të minoritetit $\mathbf{x}_i$, zgjidhet njëri nga $k$ fqinjët më të afërt $\mathbf{x}_{nn}$ rastësisht dhe krijohet:
 
-### Threshold
+$$\mathbf{x}_{\text{e re}} = \mathbf{x}_i + \lambda \cdot (\mathbf{x}_{nn} - \mathbf{x}_i), \quad \lambda \sim \text{Uniform}(0, 1)$$
 
-$$\text{threshold} = \bar{I} \times 0.05, \quad \bar{I} = \frac{1}{p} \sum_{j=1}^{p} I(j)$$
+Kjo gjeneron mostra sintetike **përgjatë segmentit të vijës** midis pikave reale të klasës së minoritetit.
 
-A factor of 0.05 removes only features whose importance is below 5% of the mean — this is a conservative cutoff that drops near-zero features while keeping the vast majority.
+**Kushti:** Përdoret kur $\min(n_k) \geq 6$ (fqinjë të mjaftueshëm për interpolim të qëndrueshëm).
 
-**Result:** 25 features → **9 features kept**
+### ADASYN - Mostrat Sintetike Adaptive
 
-This reduces noise from irrelevant features, speeds up training, and can improve generalization. The same mask is applied identically to the test set (no re-fitting on test data).
+ADASYN përmirëson SMOTE duke gjeneruar **më shumë mostra sintetike pranë kufirit të vendimit** - domethënë, rreth pikave të klasës minoritare të rrethuara nga pika të klasës shumicë dhe prandaj më të vështira për t'u klasifikuar saktë.
+
+Për çdo mostër të minoritetit $\mathbf{x}_i$, llogaritet:
+
+$$r_i = \frac{\Delta_i}{k}, \quad \Delta_i = \text{numri i mostrave të klasës shumicë midis } k \text{ fqinjëve më të afërt të } \mathbf{x}_i$$
+
+Pastaj normalizohet: $\hat{r}_i = r_i / \sum_j r_j$
+
+Numri i mostrave sintetike të gjeneruara për $\mathbf{x}_i$ është $G \cdot \hat{r}_i$, ku $G$ është numri total i mostrave sintetike të nevojshme. Mostrat pranë kufirit (me $r_i$ të lartë) marrin më shumë fqinjë sintetikë.
+
+**Kushti:** Përdoret kur $\min(n_k) < 6$ (SMOTE ka nevojë për të paktën 6 fqinjë).
 
 ---
 
-## 8. Step 4 — Hyperparameter Search Strategy
+## 7. Hapi 3 - Zgjedhja e Veçorive
+
+Një Pyll i Rastit i parapërgatitur (100 pemë) trajnohet mbi set-in e trajnimit të balancuar për të llogaritur **rëndësitë e veçorive të bazuara në Gini**.
+
+### Formula e Nevojës së Veçorisë (Ulja Mesatare e Papastërtisë)
+
+Për një pemë të vetme vendimi, rëndësia e veçorisë $j$ është:
+
+$$I(j) = \sum_{t \in \text{nyjet ku përdoret } j} \frac{n_t}{n} \cdot \Delta \text{Gini}(t)$$
+
+Ku:
+- $n_t$ = numri i mostrave të trajnimit që arrijnë nyjen $t$
+- $n$ = numri total i mostrave trajnuese
+- $\Delta \text{Gini}(t) = \text{Gini}(t) - \frac{n_L}{n_t}\text{Gini}(t_L) - \frac{n_R}{n_t}\text{Gini}(t_R)$ - ulja e papastërtisë në ndarjen $t$
+- $\text{Gini}(t) = 1 - \sum_{k} p_k^2$ - papastërtia Gini në nyjen $t$
+
+Për një Pyll Rasti, rëndësia mesatarizohet mbi të gjitha pemët dhe normalizohet në shumë 1.
+
+### Pragu
+
+$$\text{prag} = \bar{I} \times 0.05, \quad \bar{I} = \frac{1}{p} \sum_{j=1}^{p} I(j)$$
+
+Faktori 0.05 heq vetëm veçoritë me nevojë nën 5% të mesatares - ky është një kufi konservativ që eliminon veçoritë gati-zero duke mbajtur shumicën dërrmuese.
+
+**Rezultati:** 25 veçori → **9 veçori të mbajtura**
+
+Kjo redukton zhurmën nga veçoritë e parëndësishme, shpejton trajnimin dhe mund të përmirësojë gjeneralizimin. I njëjti maskë aplikohet në mënyrë identike mbi test set-in (pa ri-aplikim mbi të dhënat e testit).
+
+---
+
+## 8. Hapi 4 - Strategjia e Kërkimit të Hiperparametrave
 
 ### RandomizedSearchCV
 
-Instead of exhaustively testing every combination (GridSearchCV), RandomizedSearchCV samples $n\_iter$ combinations uniformly at random from the parameter distributions:
+Në vend të testimit exhaustiv të çdo kombinimi (GridSearchCV), RandomizedSearchCV kampionon $n\_iter$ kombinime në mënyrë uniforme rastësisht nga shpërndarjet e parametrave:
 
-$$\theta^* = \arg\max_{\theta \in S} \mathbb{E}[\text{CV Score}(\theta)], \quad S \subset \Theta, \; |S| = n\_iter$$
+$$\theta^* = \arg\max_{\theta \in S} \mathbb{E}[\text{Rezultati CV}(\theta)], \quad S \subset \Theta, \; |S| = n\_iter$$
 
-**Why RandomizedSearchCV over GridSearchCV?**
-- GridSearchCV with wide grids would require thousands of model fits (e.g., Gradient Boosting has $5 \times 5 \times 4 \times 4 \times 3 = 1200$ combinations — at 5 folds each, that's 6,000 fits per model)
-- RandomizedSearchCV samples 30 combinations (150 fits per model) and still explores the full range
-- Empirically, random search finds equally good hyperparameters as grid search in a fraction of the time *(Bergstra & Bengio, 2012)*
+**Pse RandomizedSearchCV dhe jo GridSearchCV?**
+- GridSearchCV me grida të gjera do të kërkonte mijëra trajnime modeli (p.sh., Gradient Boosting ka $5 \times 5 \times 4 \times 4 \times 3 = 1200$ kombinime - me 5 fold-e secila, kjo janë 6,000 trajnime për model)
+- RandomizedSearchCV kampionon 30 kombinime (150 trajnime për model) dhe shploron ende të gjithë gamën
+- Empirikisht, kërkimi rastësor gjen hiperparametra po aq të mirë sa kërkimi me grid në një fraksion të kohës *(Bergstra & Bengio, 2012)*
 
-**n_iter is capped per model:**
+**n_iter kufizohet për çdo model:**
 ```
-Logistic Regression : min(30, 11)  = 11   ← exhaustive (only 11 combinations)
-Random Forest       : min(30, 540) = 30   ← random subset
-Gradient Boosting   : min(30,1200) = 30   ← random subset
-SVM (Linear)        : min(30,   9) =  9   ← exhaustive (only 9 combinations)
-MLP                 : min(30,  60) = 30   ← random subset
+Regresion Logjistik : min(30, 11)  = 11   ← exhaustiv (vetëm 11 kombinime)
+Isolation Forest      : min(30, 540) = 30   ← nënbashkësi rastësore
+Gradient Boosting   : min(30,1200) = 30   ← nënbashkësi rastësore
+SVM (Linear)        : min(30,   9) =  9   ← exhaustiv (vetëm 9 kombinime)
+MLP                 : min(30,  60) = 30   ← nënbashkësi rastësore
 ```
 
-### StratifiedKFold Cross-Validation (5 folds)
+### Validimi i Kryqëzuar StratifiedKFold (5 fold-e)
 
-The training set is partitioned into 5 non-overlapping, stratified folds:
+Set-i i trajnimit ndahet në 5 fold-e jo-të-mbivendosura, të stratifikuara:
 
 ```
-Fold 1: [████░░░░░░░░░░░░░░░░]  validate / train on remaining 4
+Fold 1: [████░░░░░░░░░░░░░░░░]  validim / trajnim mbi 4 të tjerat
 Fold 2: [░░░░████░░░░░░░░░░░░]
 Fold 3: [░░░░░░░░████░░░░░░░░]
 Fold 4: [░░░░░░░░░░░░████░░░░]
 Fold 5: [░░░░░░░░░░░░░░░░████]
 ```
 
-CV score for a parameter configuration $\theta$:
+Rezultati CV për konfigurimin e parametrave $\theta$:
 
 $$\widehat{\text{CV}}(\theta) = \frac{1}{K} \sum_{k=1}^{K} \text{F1}_{\text{macro}}(M_\theta^{(-k)}, D_k)$$
 
-Where $M_\theta^{(-k)}$ is the model trained on all folds except $k$, evaluated on fold $k$.
+Ku $M_\theta^{(-k)}$ është modeli i trajnuar mbi të gjitha fold-et përveç $k$, i vlerësuar mbi fold-in $k$.
 
-**Why 5-fold and not 3-fold (Phase II)?**
-More folds → more training data per fold → lower bias in the score estimate, and averaging over 5 held-out sets reduces variance. 5-fold is the standard in academic ML evaluation.
+**Pse 5-fold dhe jo 3-fold (Faza II)?**
+Më shumë fold-e → më shumë të dhëna trajnuese për fold → bias më i ulët në vlerësimin e rezultatit, dhe mesatarizon mbi 5 set-e të mbajtura redukton variancën. 5-fold është standardi në vlerësimin akademik të ML.
 
-**Scoring metric:** `f1_macro` — macro-averaged F1 treats all classes equally regardless of support, which is appropriate for a 3-class problem where no single class should dominate the optimization.
+**Metrika e vlerësimit:** `f1_macro` - F1 makro-mesatare trajton të gjitha klasat në mënyrë të barabartë pavarësisht mbështetjes, gjë që është e përshtatshme për një problem me 3 klasa ku asnjë klasë e vetme nuk duhet të dominojë optimizimin.
 
 ---
 
-## 9. Algorithms — Full Mathematical Treatment
+## 9. Algoritmet - Trajtim i Plotë Matematikor
 
-### 9.1 Logistic Regression
+### 9.1 Regresioni Logjistik
 
-**Type:** Probabilistic linear classifier (generalized linear model)
+**Lloji:** Klasifikues linear probabilistik (model linear i përgjithësuar)
 
-**Best hyperparameters found:** `C = 100`
+**Hiperparametrat më të mirë të gjetur:** `C = 100`
 
-#### Multinomial (Softmax) Formulation
+#### Formulimi Multinomial (Softmax)
 
-For $K = 3$ classes, the probability of class $k$ given input $\mathbf{x} \in \mathbb{R}^p$ is:
+Për $K = 3$ klasa, probabiliteti i klasës $k$ për input-in $\mathbf{x} \in \mathbb{R}^p$ është:
 
 $$P(y = k \mid \mathbf{x}) = \frac{e^{\mathbf{w}_k^\top \mathbf{x} + b_k}}{\sum_{j=1}^{K} e^{\mathbf{w}_j^\top \mathbf{x} + b_j}}$$
 
-This is the **softmax function** — it produces a proper probability distribution over $K$ classes (all values positive, sum to 1).
+Kjo është **funksioni softmax** - prodhon një shpërndarje të duhur probabiliteti mbi $K$ klasa (të gjitha vlerat pozitive, shuma 1).
 
-#### Loss Function — Multinomial Cross-Entropy + L2 Regularization
+#### Funksioni i Humbjes - Entropia e Kryqëzuar Multinomiale + Regularizimi L2
 
-The model is trained by minimizing:
+Modeli trajnohet duke minimizuar:
 
 $$\mathcal{L}(\mathbf{W}) = -\frac{1}{n} \sum_{i=1}^{n} \sum_{k=1}^{K} \mathbf{1}[y_i = k] \log P(y_i = k \mid \mathbf{x}_i) + \frac{1}{2C} \sum_{k=1}^{K} \|\mathbf{w}_k\|_2^2$$
 
-Where:
-- First term: **cross-entropy loss** — penalizes low predicted probability for the correct class
-- Second term: **L2 regularization** — shrinks weights toward zero to prevent overfitting
-- $C$ = **inverse regularization strength**: large $C$ → weak regularization → more flexible; small $C$ → strong regularization → simpler model
+Ku:
+- Termi i parë: **humbja nga entropia e kryqëzuar** - ndëshkon probabilitetin e ulët të parashikuar për klasën e saktë
+- Termi i dytë: **regularizimi L2** - tkurr peshat drejt zeros për të parandaluar mbi-përshtatjen
+- $C$ = **forca inverse e regularizimit**: $C$ i madh → regularizim i dobët → model më fleksibël; $C$ i vogël → regularizim i fortë → model më i thjeshtë
 
-#### Regularization Effect
+#### Efekti i Regularizimit
 
-$$C \to 0 \Rightarrow \mathbf{W} \to \mathbf{0} \quad \text{(underfitting)}$$
-$$C \to \infty \Rightarrow \text{no penalty, pure MLE} \quad \text{(overfitting risk)}$$
+$$C \to 0 \Rightarrow \mathbf{W} \to \mathbf{0} \quad \text{(nën-përshtatje)}$$
+$$C \to \infty \Rightarrow \text{pa penalizim, MLE i pastër} \quad \text{(rrezik mbi-përshtatjeje)}$$
 
-**Best C = 100** (weak regularization) indicates the dataset has low noise and the model benefits from fitting closely to the training distribution.
+**C = 100 më i miri** (regularizim i dobët) tregon se dataseti ka zhurmë të ulët dhe modeli përfiton nga përshtatja e ngushtë me shpërndarjen e trajnimit.
 
-#### Decision Rule
+#### Rregulli i Vendimit
 
 $$\hat{y} = \arg\max_{k} \; P(y = k \mid \mathbf{x})$$
 
-#### Phase III Results
+#### Rezultatet e Fazës III
 
-| Metric | Value |
+| Metrika | Vlera |
 |---|---|
 | CV F1 (macro) | 0.9872 |
 | Accuracy | 0.9806 |
 | F1 (macro) | 0.9806 |
 | ROC-AUC (macro) | 0.9993 |
 
-**Per-class:**
-| Class | Precision | Recall | F1 | Support |
+**Sipas klasës:**
+| Klasa | Precision | Recall | F1 | Mbështetja |
 |---|---|---|---|---|
 | High | 1.00 | 0.99 | 1.00 | 105 |
 | Low | 0.97 | 0.98 | 0.97 | 99 |
@@ -338,64 +339,64 @@ $$\hat{y} = \arg\max_{k} \; P(y = k \mid \mathbf{x})$$
 
 ---
 
-### 9.2 Random Forest
+### 9.2 Isolation Forest
 
-**Type:** Ensemble of decision trees using Bootstrap Aggregation (Bagging)
+**Lloji:** Ansambël pemësh vendimi duke përdorur Agregimin Bootstrap (Bagging)
 
-**Best hyperparameters found:** `n_estimators=100, max_depth=8, min_samples_split=2, min_samples_leaf=4, max_features="log2"`
+**Hiperparametrat më të mirë të gjetur:** `n_estimators=100, max_depth=8, min_samples_split=2, min_samples_leaf=4, max_features="log2"`
 
-#### Decision Tree — Splitting Criterion (Gini Impurity)
+#### Pema e Vendimit - Kriteri i Ndarjes (Papastërtia Gini)
 
-At each node $t$, the tree selects the feature $j^*$ and threshold $\tau^*$ that maximizes the impurity decrease:
+Në çdo nyje $t$, pema zgjedh veçorinë $j^*$ dhe pragun $\tau^*$ që maksimizojnë uljen e papastërtisë:
 
 $$j^*, \tau^* = \arg\max_{j, \tau} \; \Delta\text{Gini}(t, j, \tau)$$
 
 $$\Delta\text{Gini}(t, j, \tau) = \text{Gini}(t) - \frac{n_L}{n_t}\text{Gini}(t_L) - \frac{n_R}{n_t}\text{Gini}(t_R)$$
 
-$$\text{Gini}(t) = 1 - \sum_{k=1}^{K} \hat{p}_{tk}^2, \quad \hat{p}_{tk} = \frac{\text{samples of class } k \text{ at node } t}{n_t}$$
+$$\text{Gini}(t) = 1 - \sum_{k=1}^{K} \hat{p}_{tk}^2, \quad \hat{p}_{tk} = \frac{\text{mostrat e klasës } k \text{ në nyjen } t}{n_t}$$
 
-A pure node ($\hat{p}_{tk} = 1$ for one $k$) has $\text{Gini} = 0$ (minimum). A fully mixed node has $\text{Gini} = 1 - \frac{1}{K}$ (maximum).
+Një nyje e pastër ($\hat{p}_{tk} = 1$ për një $k$) ka $\text{Gini} = 0$ (minimum). Një nyje plotësisht e përzier ka $\text{Gini} = 1 - \frac{1}{K}$ (maksimum).
 
-#### Bagging (Bootstrap Aggregation)
+#### Bagging (Agregimi Bootstrap)
 
-For each tree $b = 1, \ldots, B$:
-1. Draw a bootstrap sample $D_b$ of size $n$ with replacement from the training set
-2. At each split, consider only a random subset of $m = \lfloor\log_2(p)\rfloor$ features (`max_features="log2"`)
-3. Grow the tree to maximum depth or until leaf purity conditions are met
+Për çdo pemë $b = 1, \ldots, B$:
+1. Nxirret një mostër bootstrap $D_b$ me madhësi $n$ me zëvendësim nga set-i i trajnimit
+2. Në çdo ndarje, konsiderohet vetëm një nënbashkësi rastësore e $m = \lfloor\log_2(p)\rfloor$ veçorish (`max_features="log2"`)
+3. Pema rritet deri në thellësinë maksimale ose derisa të plotësohen kushtet e pastërtisë së gjethes
 
-**Why random feature subsets?** If one feature is very predictive, all trees in a standard bagging ensemble would use it at the root, making the trees highly correlated. Random subsets decorrelate the trees, reducing ensemble variance without increasing bias.
+**Pse nënbashkësi rastësore veçorish?** Nëse një veçori është shumë parashikuese, të gjitha pemët në një ansambël bagging standard do ta përdornin atë në rrënjë, duke i bërë pemët shumë të korreluara. Nënbashkësitë rastësore de-korrelojnë pemët, duke reduktuar variancën e ansamblit pa rritur biast.
 
-#### Ensemble Prediction (Majority Vote)
+#### Parashikimi i Ansamblit (Votimi me Shumicë)
 
 $$\hat{y} = \text{mode}\left(\hat{y}_1(\mathbf{x}), \hat{y}_2(\mathbf{x}), \ldots, \hat{y}_B(\mathbf{x})\right)$$
 
-#### Bias-Variance Decomposition
+#### Dekompozimi Bias-Variancë
 
-$$\text{Error} = \text{Bias}^2 + \text{Variance} + \text{Irreducible Noise}$$
+$$\text{Gabimi} = \text{Bias}^2 + \text{Varianca} + \text{Zhurmë e Pareduktuesme}$$
 
-Individual deep trees have low bias but high variance (overfit to their bootstrap sample). Averaging $B$ decorrelated trees reduces variance by approximately $\frac{1}{B}$ while keeping bias constant.
+Pemët e thella individuale kanë bias të ulët por variancë të lartë (mbi-përshtaten me mostrën e tyre bootstrap). Mesatarizon $B$ pemë të de-korreluara redukton variancën me afërsisht $\frac{1}{B}$ duke mbajtur biasit konstant.
 
-#### Hyperparameter Meanings
+#### Kuptimet e Hiperparametrave
 
-| Param | Value | Effect |
-|---|---|---|
-| `n_estimators` | 100 | Number of trees — more trees → lower variance but diminishing returns |
-| `max_depth` | 8 | Maximum tree depth — prevents individual trees from overfitting |
-| `min_samples_leaf` | 4 | Leaf must have ≥4 samples — regularizes the tree, reduces noise |
-| `min_samples_split` | 2 | Node must have ≥2 samples to be split |
-| `max_features` | log2 | $m = \lfloor\log_2(9)\rfloor = 3$ features considered per split |
+| Parametri | Vlera | Efekti                                                                        |
+|---|---|-------------------------------------------------------------------------------|
+| `n_estimators` | 100 | Numri i pemëve - më shumë pemë → variancë më e ulët por kthesa zbriste        |
+| `max_depth` | 8 | Thellësia maksimale e pemës - parandalon mbi-përshtatjen e pemëve individuale |
+| `min_samples_leaf` | 4 | Gjethja duhet të ketë ≥4 mostra - regularizim i pemës, redukton zhurmën       |
+| `min_samples_split` | 2 | Nyja duhet të ketë ≥2 mostra për t'u ndarë                                    |
+| `max_features` | log2 | $m = \lfloor\log_2(9)\rfloor = 3$ veçori konsiderohen për çdo ndarje          |
 
-#### Phase III Results
+#### Rezultatet e Fazës III
 
-| Metric | Value |
+| Metrika | Vlera |
 |---|---|
 | CV F1 (macro) | 0.9984 |
 | Accuracy | 0.9903 |
 | F1 (macro) | 0.9904 |
 | ROC-AUC (macro) | 0.9999 |
 
-**Per-class:**
-| Class | Precision | Recall | F1 | Support |
+**Sipas klasës:**
+| Klasa | Precision | Recall | F1 | Mbështetja |
 |---|---|---|---|---|
 | High | 1.00 | 0.98 | 0.99 | 105 |
 | Low | 0.99 | 1.00 | 0.99 | 99 |
@@ -405,82 +406,82 @@ Individual deep trees have low bias but high variance (overfit to their bootstra
 
 ### 9.3 Gradient Boosting
 
-**Type:** Additive ensemble of shallow decision trees built sequentially using gradient descent in function space
+**Lloji:** Ansambël additiv i pemëve të cekëta vendimi të ndërtuara sekuencialisht duke përdorur zbritjen e gradientit në hapësirën e funksionit
 
-**Best hyperparameters found:** `n_estimators=500, learning_rate=0.2, max_depth=5, subsample=0.9, min_samples_split=5`
+**Hiperparametrat më të mirë të gjetur:** `n_estimators=500, learning_rate=0.2, max_depth=5, subsample=0.9, min_samples_split=5`
 
-#### Additive Model
+#### Modeli Additiv
 
-The prediction is a sum of $M$ weak learners (trees):
+Parashikimi është shuma e $M$ nxënësve të dobët (pemëve):
 
 $$F_M(\mathbf{x}) = F_0(\mathbf{x}) + \sum_{m=1}^{M} \eta \cdot h_m(\mathbf{x})$$
 
-Where:
-- $F_0(\mathbf{x})$ = initial prediction (e.g., log-odds of most frequent class)
-- $h_m(\mathbf{x})$ = the $m$-th tree, trained to predict the **negative gradient** (pseudo-residuals) of the loss with respect to the current model
-- $\eta$ = `learning_rate` (shrinkage parameter)
+Ku:
+- $F_0(\mathbf{x})$ = parashikimi fillestar (p.sh., log-gjasët e klasës më të shpeshtë)
+- $h_m(\mathbf{x})$ = pema e $m$-të, e trajnuar për të parashikuar **gradientin negativ** (pseudo-mbetjet) të humbjes ndaj modelit aktual
+- $\eta$ = `learning_rate` (parametri i tkurrjes)
 
-#### Gradient Descent in Function Space
+#### Zbritja e Gradientit në Hapësirën e Funksionit
 
-At each boosting round $m$, compute the pseudo-residuals:
+Në çdo raund boosting-u $m$, llogariten pseudo-mbetjet:
 
 $$r_{im} = -\left[\frac{\partial \mathcal{L}(y_i, F(\mathbf{x}_i))}{\partial F(\mathbf{x}_i)}\right]_{F = F_{m-1}}$$
 
-For multinomial cross-entropy loss across $K$ classes:
+Për humbjen nga entropia e kryqëzuar multinomiale mbi $K$ klasa:
 
 $$\mathcal{L} = -\sum_{i=1}^{n} \sum_{k=1}^{K} \mathbf{1}[y_i = k] \log p_{ik}$$
 
-The pseudo-residual for class $k$ at sample $i$ is:
+Pseudo-mbetja për klasën $k$ në mostrën $i$ është:
 
 $$r_{imk} = \mathbf{1}[y_i = k] - p_{ik,m-1}$$
 
-This is simply the difference between the true one-hot label and the current probability prediction — the model learns to reduce this residual at each step.
+Kjo është thjesht diferenca midis etiketës reale one-hot dhe parashikimit aktual të probabilitetit - modeli mëson të reduktojë këtë mbetje në çdo hap.
 
-#### Shrinkage (learning_rate)
+#### Tkurrja (learning_rate)
 
 $$F_m(\mathbf{x}) = F_{m-1}(\mathbf{x}) + \eta \cdot h_m(\mathbf{x}), \quad \eta = 0.2$$
 
-Small $\eta$ → many small steps (more trees needed, better regularization).
-Large $\eta$ → fewer, larger steps (faster but may overshoot).
+$\eta$ i vogël → hapa të shumë të vegjël (nevojiten më shumë pemë, regularizim më i mirë).
+$\eta$ i madh → hapa më pak, më të mëdha (më i shpejtë por mund të tejkalojë).
 
-#### Stochastic Gradient Boosting (subsample)
+#### Gradient Boosting Stokastik (subsample)
 
-With `subsample=0.9`, each tree $h_m$ is trained on a random 90% subsample of the training data (without replacement), drawn fresh each round. This introduces randomness that:
-- Reduces correlation between consecutive trees
-- Acts as implicit regularization
-- Often improves generalization (Friedman, 1999)
+Me `subsample=0.9`, çdo pemë $h_m$ trajnohet mbi 90% mostrë rastësore të të dhënave trajnuese (pa zëvendësim), të nxjerra sërishmi çdo raund. Kjo fut rastësi që:
+- Redukton korrelacionin midis pemëve konsekutive
+- Vepron si regularizim implicit
+- Shpesh përmirëson gjeneralizimin (Friedman, 1999)
 
-#### Difference from Random Forest
+#### Dallimi nga Isolation Forest
 
-| | Random Forest | Gradient Boosting |
+| | Isolation Forest | Gradient Boosting |
 |---|---|---|
-| Tree construction | **Parallel** (independent) | **Sequential** (each corrects previous) |
-| Target | Original labels | Pseudo-residuals (gradient of loss) |
-| Randomness | Bootstrap + feature subsets | Subsampling (stochastic) |
-| Regularization | Depth, leaf size | Learning rate, depth, subsampling |
-| Typical trees | Deep | **Shallow** (max_depth=5) |
+| Ndërtimi i pemës | **Paralel** (i pavarur) | **Sekuencial** (secila korrigjon të mëparshmen) |
+| Synimi | Etiketa origjinale | Pseudo-mbetjet (gradienti i humbjes) |
+| Rastësia | Bootstrap + nënbashkësi veçorish | Nën-samplimet (stokastike) |
+| Regularizimi | Thellësia, madhësia e gjethes | Shkalla e mësimit, thellësia, nën-samplimet |
+| Pemë tipike | Të thella | **Të cekëta** (max_depth=5) |
 
-#### Hyperparameter Meanings
+#### Kuptimet e Hiperparametrave
 
-| Param | Value | Effect |
-|---|---|---|
-| `n_estimators` | 500 | Boosting rounds — more rounds fit residuals more precisely |
-| `learning_rate` | 0.2 | Shrinkage — scales each tree's contribution |
-| `max_depth` | 5 | Shallow trees are weak learners — depth 5 allows moderate interactions |
-| `subsample` | 0.9 | 90% of training data per tree — stochastic regularization |
-| `min_samples_split` | 5 | Node must have ≥5 samples to split |
+| Parametri | Vlera | Efekti                                                                       |
+|---|---|------------------------------------------------------------------------------|
+| `n_estimators` | 500 | Raundet e boosting-ut - më shumë raunde përshtatin mbetjet më saktë          |
+| `learning_rate` | 0.2 | Tkurrja - shkallëzon kontributin e secilës pemë                              |
+| `max_depth` | 5 | Pemët e cekëta janë nxënës të dobët - thellësia 5 lejon ndërveprime moderate |
+| `subsample` | 0.9 | 90% e të dhënave trajnuese për pemë - regularizim stokastik                  |
+| `min_samples_split` | 5 | Nyja duhet të ketë ≥5 mostra për t'u ndarë                                   |
 
-#### Phase III Results (Best Model)
+#### Rezultatet e Fazës III (Modeli Fitues)
 
-| Metric | Value |
+| Metrika | Vlera |
 |---|---|
-| CV F1 (macro) | **0.9992** ← highest |
+| CV F1 (macro) | **0.9992** ← më i larti |
 | Accuracy | 0.9903 |
 | F1 (macro) | 0.9904 |
 | ROC-AUC (macro) | **0.9999** |
 
-**Per-class:**
-| Class | Precision | Recall | F1 | Support |
+**Sipas klasës:**
+| Klasa | Precision | Recall | F1 | Mbështetja |
 |---|---|---|---|---|
 | High | 1.00 | 0.98 | 0.99 | 105 |
 | Low | 0.99 | 1.00 | 0.99 | 99 |
@@ -488,73 +489,73 @@ With `subsample=0.9`, each tree $h_m$ is trained on a random 90% subsample of th
 
 ---
 
-### 9.4 Support Vector Machine — Linear Kernel
+### 9.4 Makina me Vektora Mbështetës - Bërthama Lineare
 
-**Type:** Maximum-margin linear classifier
+**Lloji:** Klasifikues linear me margin maksimal
 
-**Best hyperparameters found:** `C = 50`
+**Hiperparametrat më të mirë të gjetur:** `C = 50`
 
-**Note:** `probability=True` enables Platt scaling so `predict_proba` is available for ROC-AUC computation.
+**Shënim:** `probability=True` aktivizon shkallëzimin Platt kështu që `predict_proba` është i disponueshëm për llogaritjen e ROC-AUC.
 
-#### Binary SVM Formulation (extended to multi-class via One-vs-Rest)
+#### Formulimi Binar SVM (zgjeruar te shumë-klasësh nëpërmjet One-vs-Rest)
 
-For a binary problem with labels $y \in \{-1, +1\}$, the SVM finds the hyperplane $\mathbf{w}^\top \mathbf{x} + b = 0$ that maximizes the margin:
+Për një problem binar me etiketa $y \in \{-1, +1\}$, SVM gjen hiperplanin $\mathbf{w}^\top \mathbf{x} + b = 0$ që maksimizon marginin:
 
-$$\max_{\mathbf{w}, b} \frac{2}{\|\mathbf{w}\|} \quad \text{subject to} \quad y_i(\mathbf{w}^\top \mathbf{x}_i + b) \geq 1, \; \forall i$$
+$$\max_{\mathbf{w}, b} \frac{2}{\|\mathbf{w}\|} \quad \text{kushtëzuar nga} \quad y_i(\mathbf{w}^\top \mathbf{x}_i + b) \geq 1, \; \forall i$$
 
-Equivalently (primal form with slack variables):
+Ekuivalent (forma primare me variabla slack):
 
 $$\min_{\mathbf{w}, b, \boldsymbol{\xi}} \frac{1}{2}\|\mathbf{w}\|^2 + C \sum_{i=1}^{n} \xi_i$$
-$$\text{subject to} \quad y_i(\mathbf{w}^\top \mathbf{x}_i + b) \geq 1 - \xi_i, \quad \xi_i \geq 0$$
+$$\text{kushtëzuar nga} \quad y_i(\mathbf{w}^\top \mathbf{x}_i + b) \geq 1 - \xi_i, \quad \xi_i \geq 0$$
 
-Where:
-- $\frac{1}{\|\mathbf{w}\|}$ = **margin width** — maximizing this minimizes $\|\mathbf{w}\|^2$
-- $\xi_i \geq 0$ = **slack variables** — allow misclassifications (soft margin)
-- $C$ = **regularization parameter**: large $C$ → penalize misclassifications heavily → small margin; small $C$ → allow more slack → larger margin
+Ku:
+- $\frac{1}{\|\mathbf{w}\|}$ = **gjerësia e marginit** - maksimizimi i saj minimizon $\|\mathbf{w}\|^2$
+- $\xi_i \geq 0$ = **variablat slack** - lejojnë keq-klasifikime (margin i butë)
+- $C$ = **parametri i regularizimit**: $C$ i madh → ndëshko keq-klasifikimet rëndë → margin i vogël; $C$ i vogël → lejo më shumë slack → margin më i madh
 
-#### Hinge Loss Interpretation
+#### Interpretimi i Humbjes Hinge
 
-The SVM objective is equivalent to:
+Objektivi SVM është ekuivalent me:
 
 $$\min_{\mathbf{w}} \frac{\lambda}{2}\|\mathbf{w}\|^2 + \frac{1}{n}\sum_{i=1}^{n} \max(0, 1 - y_i \mathbf{w}^\top \mathbf{x}_i)$$
 
-The term $\max(0, 1 - y_i f(\mathbf{x}_i))$ is the **hinge loss** — zero for correctly classified points outside the margin, linear for points inside or beyond the margin.
+Termi $\max(0, 1 - y_i f(\mathbf{x}_i))$ është **humbja hinge** - zero për pikat e klasifikuara saktë jashtë marginit, lineare për pikat brenda ose përtej marginit.
 
-#### Multi-class Extension (One-vs-Rest)
+#### Zgjerimi Shumë-Klasësh (One-vs-Rest)
 
-For $K = 3$ classes, three binary SVMs are trained:
+Për $K = 3$ klasa, trajnohen tre SVM binare:
 - $f_1$: High vs. {Low, Medium}
 - $f_2$: Low vs. {High, Medium}
 - $f_3$: Medium vs. {High, Low}
 
 $$\hat{y} = \arg\max_{k} \; f_k(\mathbf{x})$$
 
-#### Platt Scaling (probability=True)
+#### Shkallëzimi Platt (probability=True)
 
-The decision function $f(\mathbf{x}) = \mathbf{w}^\top \mathbf{x} + b$ is converted to a probability via sigmoid:
+Funksioni i vendimit $f(\mathbf{x}) = \mathbf{w}^\top \mathbf{x} + b$ konvertohet në probabilitet nëpërmjet sigmoid:
 
 $$P(y=1 \mid \mathbf{x}) = \frac{1}{1 + e^{Af(\mathbf{x}) + B}}$$
 
-Parameters $A$ and $B$ are fit by maximum likelihood on a held-out validation set (5-fold cross-validation internally). This enables ROC-AUC computation.
+Parametrat $A$ dhe $B$ përshtaten me maximum likelihood mbi një set validimi (validim i kryqëzuar 5-fold brenda). Kjo mundëson llogaritjen e ROC-AUC.
 
-#### Hyperparameter Meanings
+#### Kuptimet e Hiperparametrave
 
-| Param | Value | Effect |
+| Parametri | Vlera | Efekti |
 |---|---|---|
-| `C` | 50 | High C → small margin, penalize misclassifications heavily |
-| `kernel` | linear | Decision boundary is a hyperplane in the original feature space |
+| `C` | 50 | C i lartë → margin i vogël, ndëshkim i rëndë i keq-klasifikimeve |
+| `kernel` | linear | Kufiri i vendimit është një hiperplan në hapësirën origjinale të veçorive |
 
-#### Phase III Results
+#### Rezultatet e Fazës III
 
-| Metric | Value |
+| Metrika | Vlera |
 |---|---|
 | CV F1 (macro) | 0.9904 |
 | Accuracy | 0.9839 |
 | F1 (macro) | 0.9838 |
 | ROC-AUC (macro) | 0.9995 |
 
-**Per-class:**
-| Class | Precision | Recall | F1 | Support |
+**Sipas klasës:**
+| Klasa | Precision | Recall | F1 | Mbështetja |
 |---|---|---|---|---|
 | High | 1.00 | 0.99 | 1.00 | 105 |
 | Low | 0.97 | 0.99 | 0.98 | 99 |
@@ -562,97 +563,97 @@ Parameters $A$ and $B$ are fit by maximum likelihood on a held-out validation se
 
 ---
 
-### 9.5 Neural Network — Multi-Layer Perceptron
+### 9.5 Rrjeti Nervor - Perceptroni Shumështresor
 
-**Type:** Fully-connected feedforward neural network
+**Lloji:** Rrjet nervor i plotë-lidhur feedforward
 
-**Best hyperparameters found:** `hidden_layer_sizes=(64, 32), alpha=0.001, learning_rate_init=0.005`
+**Hiperparametrat më të mirë të gjetur:** `hidden_layer_sizes=(64, 32), alpha=0.001, learning_rate_init=0.005`
 
-**Architecture:**
+**Arkitektura:**
 
 ```
-Input Layer:    9 neurons  (one per selected feature)
-Hidden Layer 1: 64 neurons + ReLU activation
-Hidden Layer 2: 32 neurons + ReLU activation
-Output Layer:   3 neurons  + Softmax (one per class)
+Shtresa Hyrëse:    9 neurone  (një për çdo veçori të zgjedhur)
+Shtresa e Fshehur 1: 64 neurone + aktivizimi ReLU
+Shtresa e Fshehur 2: 32 neurone + aktivizimi ReLU
+Shtresa Dalëse:    3 neurone  + Softmax (një për çdo klasë)
 ```
 
-#### Forward Pass
+#### Kalimi Përpara (Forward Pass)
 
-For a network with $L$ layers, the output of layer $l$ is:
+Për një rrjet me $L$ shtresa, dalja e shtresës $l$ është:
 
 $$\mathbf{a}^{(l)} = g\left(\mathbf{W}^{(l)} \mathbf{a}^{(l-1)} + \mathbf{b}^{(l)}\right)$$
 
-Where:
-- $\mathbf{W}^{(l)} \in \mathbb{R}^{d_l \times d_{l-1}}$ — weight matrix of layer $l$
-- $\mathbf{b}^{(l)} \in \mathbb{R}^{d_l}$ — bias vector
-- $g(\cdot)$ — activation function
+Ku:
+- $\mathbf{W}^{(l)} \in \mathbb{R}^{d_l \times d_{l-1}}$ - matrica e peshave të shtresës $l$
+- $\mathbf{b}^{(l)} \in \mathbb{R}^{d_l}$ - vektori i shtesave
+- $g(\cdot)$ - funksioni i aktivizimit
 
-**Hidden layers — ReLU activation:**
+**Shtresat e fshehura - aktivizimi ReLU:**
 
-$$g(z) = \max(0, z) = \begin{cases} z & \text{if } z > 0 \\ 0 & \text{if } z \leq 0 \end{cases}$$
+$$g(z) = \max(0, z) = \begin{cases} z & \text{nëse } z > 0 \\ 0 & \text{nëse } z \leq 0 \end{cases}$$
 
-ReLU is preferred over sigmoid/tanh because:
-- No vanishing gradient problem for positive activations ($g'(z) = 1$ for $z > 0$)
-- Sparse activations (many neurons output 0) → implicit regularization
-- Computationally cheap
+ReLU preferohet ndaj sigmoid/tanh sepse:
+- Nuk ka problem me zhdukjen e gradientit për aktivizime pozitive ($g'(z) = 1$ për $z > 0$)
+- Aktivizime të rralla (shumë neurone dalin 0) → regularizim implicit
+- Llogaritisht efikas
 
-**Output layer — Softmax:**
+**Shtresa dalëse - Softmax:**
 
 $$P(y = k \mid \mathbf{x}) = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}$$
 
-#### Loss Function — Cross-Entropy + L2 Regularization
+#### Funksioni i Humbjes - Entropia e Kryqëzuar + Regularizimi L2
 
 $$\mathcal{L} = -\frac{1}{n}\sum_{i=1}^{n}\sum_{k=1}^{K} \mathbf{1}[y_i = k] \log P(y_i = k \mid \mathbf{x}_i) + \frac{\alpha}{2} \sum_{l} \|\mathbf{W}^{(l)}\|_F^2$$
 
-Where:
-- $\alpha = 0.001$ — L2 regularization strength (penalizes large weights, reduces overfitting)
-- $\|\mathbf{W}\|_F^2 = \sum_{i,j} W_{ij}^2$ — Frobenius norm (sum of squared weights)
+Ku:
+- $\alpha = 0.001$ - forca e regularizimit L2 (ndëshkon peshat e mëdha, redukton mbi-përshtatjen)
+- $\|\mathbf{W}\|_F^2 = \sum_{i,j} W_{ij}^2$ - norma Frobenius (shuma e peshave në katror)
 
-#### Backpropagation
+#### Propagimi Prapa (Backpropagation)
 
-Gradients are computed via the chain rule backward through the network:
+Gradientët llogariten nëpërmjet rregullit të zinxhirit prapa nëpër rrjet:
 
 $$\frac{\partial \mathcal{L}}{\partial \mathbf{W}^{(l)}} = \frac{\partial \mathcal{L}}{\partial \mathbf{a}^{(l)}} \cdot \frac{\partial \mathbf{a}^{(l)}}{\partial \mathbf{z}^{(l)}} \cdot \frac{\partial \mathbf{z}^{(l)}}{\partial \mathbf{W}^{(l)}}$$
 
-For ReLU: $\frac{\partial a_j^{(l)}}{\partial z_j^{(l)}} = \mathbf{1}[z_j^{(l)} > 0]$
+Për ReLU: $\frac{\partial a_j^{(l)}}{\partial z_j^{(l)}} = \mathbf{1}[z_j^{(l)} > 0]$
 
-#### Optimizer — Adam (Adaptive Moment Estimation)
+#### Optimizuesi - Adam (Vlerësimi Adaptive i Momentit)
 
-The MLP uses Adam, which maintains exponential moving averages of the gradient $m_t$ and squared gradient $v_t$:
+MLP përdor Adam, i cili mban mesatare të lëvizshme eksponenciale të gradientit $m_t$ dhe gradientit në katror $v_t$:
 
 $$m_t = \beta_1 m_{t-1} + (1-\beta_1) g_t$$
 $$v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2$$
 
-Bias-corrected estimates: $\hat{m}_t = \frac{m_t}{1-\beta_1^t}$, $\hat{v}_t = \frac{v_t}{1-\beta_2^t}$
+Vlerësimet e korrigjuara nga bias: $\hat{m}_t = \frac{m_t}{1-\beta_1^t}$, $\hat{v}_t = \frac{v_t}{1-\beta_2^t}$
 
-Weight update:
+Përditësimi i peshave:
 $$\mathbf{W}_t = \mathbf{W}_{t-1} - \frac{\eta}{\sqrt{\hat{v}_t} + \epsilon} \hat{m}_t, \quad \eta = \text{learning\_rate\_init} = 0.005$$
 
-Default: $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\epsilon = 10^{-8}$
+Parazgjedhja: $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\epsilon = 10^{-8}$
 
-#### Hyperparameter Meanings
+#### Kuptimet e Hiperparametrave
 
-| Param | Value | Effect |
-|---|---|---|
-| `hidden_layer_sizes` | (64, 32) | Network width — 64 neurons then 32; deeper but narrowing |
-| `alpha` | 0.001 | L2 penalty strength — moderate regularization |
-| `learning_rate_init` | 0.005 | Initial Adam step size |
-| `max_iter` | 1000 | Maximum training epochs |
+| Parametri | Vlera | Efekti                                                              |
+|---|---|---------------------------------------------------------------------|
+| `hidden_layer_sizes` | (64, 32) | Gjerësia e rrjetit - 64 neurone pastaj 32; thellohet por ngushtohet |
+| `alpha` | 0.001 | Forca e penalizimit L2 - regularizim moderate                       |
+| `learning_rate_init` | 0.005 | Madhësia fillestare e hapit Adam                                    |
+| `max_iter` | 1000 | Epokat maksimale të trajnimit                                       |
 
-**Note on early_stopping:** Disabled due to a `numpy.isnan` incompatibility with string class labels in this sklearn/numpy version. `max_iter=1000` compensates by allowing sufficient training epochs.
+**Shënim mbi early_stopping:** Çaktivizuar për shkak të një papërputhshmërie `numpy.isnan` me etiketat e klasave si vargje në këtë version sklearn/numpy. `max_iter=1000` kompenson duke lejuar epoka trajnimi të mjaftueshme.
 
-#### Phase III Results
+#### Rezultatet e Fazës III
 
-| Metric | Value |
+| Metrika | Vlera |
 |---|---|
 | CV F1 (macro) | 0.9871 |
 | Accuracy | 0.9742 |
 | F1 (macro) | 0.9743 |
 | ROC-AUC (macro) | 0.9989 |
 
-**Per-class:**
-| Class | Precision | Recall | F1 | Support |
+**Sipas klasës:**
+| Klasa | Precision | Recall | F1 | Mbështetja |
 |---|---|---|---|---|
 | High | 0.96 | 0.99 | 0.98 | 105 |
 | Low | 0.98 | 0.99 | 0.98 | 99 |
@@ -660,242 +661,242 @@ Default: $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\epsilon = 10^{-8}$
 
 ---
 
-## 10. Evaluation Metrics — Full Formulas
+## 10. Metrikat e Vlerësimit - Formula të Plota
 
-For each class $k$, define:
-- $TP_k$ = true positives for class $k$
-- $FP_k$ = false positives for class $k$ (other classes predicted as $k$)
-- $FN_k$ = false negatives for class $k$ ($k$ predicted as another class)
+Për çdo klasë $k$, definohet:
+- $TP_k$ = pozitivë të vërtetë për klasën $k$
+- $FP_k$ = pozitivë të rremë për klasën $k$ (klasa të tjera parashikuara si $k$)
+- $FN_k$ = negativë të rremë për klasën $k$ ($k$ parashikuar si klasë tjetër)
 
-### Accuracy
+### Saktësia (Accuracy)
 
-$$\text{Accuracy} = \frac{\sum_k TP_k}{n} = \frac{\text{correctly classified}}{\text{total samples}}$$
+$$\text{Accuracy} = \frac{\sum_k TP_k}{n} = \frac{\text{të klasifikuara saktë}}{\text{mostrat totale}}$$
 
-### Precision (per class)
+### Precizioni (Precision)
 
 $$\text{Precision}_k = \frac{TP_k}{TP_k + FP_k}$$
 
-"Of all samples predicted as class $k$, what fraction truly is class $k$?"
+"Nga të gjitha mostrat e parashikuara si klasë $k$, çfarë fraksioni vërtet është klasa $k$?"
 
-### Recall (per class)
+### Ndjeshmëria (Recall)
 
 $$\text{Recall}_k = \frac{TP_k}{TP_k + FN_k}$$
 
-"Of all true class $k$ samples, what fraction did we correctly predict?"
+"Nga të gjitha mostrat e vërteta të klasës $k$, çfarë fraksioni parashikuam saktë?"
 
-### F1 Score (per class)
+### Rezultati F1
 
 $$\text{F1}_k = \frac{2 \cdot \text{Precision}_k \cdot \text{Recall}_k}{\text{Precision}_k + \text{Recall}_k} = \frac{2 \cdot TP_k}{2 \cdot TP_k + FP_k + FN_k}$$
 
-Harmonic mean of precision and recall — penalizes models that sacrifice one for the other.
+Mesatarja harmonike e precizionit dhe ndjeshmërisë - ndëshkon modelet që sakrifikojnë njërin për tjetrin.
 
-### Macro-averaged F1
+### F1 Makro-Mesatare
 
 $$\text{F1}_{\text{macro}} = \frac{1}{K} \sum_{k=1}^{K} \text{F1}_k$$
 
-Each class contributes equally, regardless of its sample count. This is the primary ranking metric — it ensures the model is not judged only on the majority class.
+Çdo klasë kontribuon në mënyrë të barabartë, pavarësisht numrit të mostrave. Kjo është metrika kryesore e renditjes - siguron që modeli të mos gjykohet vetëm mbi klasën e shumicës.
 
-### Weighted F1
+### F1 e Peshuar
 
-$$\text{F1}_{\text{weighted}} = \frac{\sum_{k=1}^{K} n_k \cdot \text{F1}_k}{\sum_{k=1}^{K} n_k}$$
+$$\text{F1}_{\text{peshuar}} = \frac{\sum_{k=1}^{K} n_k \cdot \text{F1}_k}{\sum_{k=1}^{K} n_k}$$
 
-Weights by class support — more informative when classes are imbalanced.
+Peshohet sipas mbështetjes së klasës - më informuese kur klasat janë të pabalancuara.
 
 ### ROC-AUC (Macro, One-vs-Rest)
 
-For each class $k$, train a binary classifier (class $k$ vs. all others). The ROC curve plots:
+Për çdo klasë $k$, trajnohet një klasifikues binar (klasa $k$ vs. të gjithë të tjerët). Kurba ROC paraqet:
 
 $$\text{TPR}_k(\tau) = \frac{TP_k(\tau)}{TP_k(\tau) + FN_k(\tau)}, \quad \text{FPR}_k(\tau) = \frac{FP_k(\tau)}{FP_k(\tau) + TN_k(\tau)}$$
 
-as the decision threshold $\tau$ varies from 0 to 1.
+ndërsa pragu i vendimit $\tau$ varion nga 0 në 1.
 
 $$\text{AUC}_k = \int_0^1 \text{TPR}_k(\text{FPR}) \; d(\text{FPR})$$
 
-Macro-averaged:
+Makro-mesatare:
 
 $$\text{ROC-AUC}_{\text{macro}} = \frac{1}{K} \sum_{k=1}^{K} \text{AUC}_k$$
 
-AUC = 1.0 means perfect separation; AUC = 0.5 means random classifier.
+AUC = 1.0 do të thotë ndarje perfekte; AUC = 0.5 do të thotë klasifikues rastësor.
 
-**All Phase III models achieved ROC-AUC > 0.998** — near-perfect probability calibration and class separation.
+**Të gjitha modelet e Fazës III arritën ROC-AUC > 0.998** - kalibrimi gati-perfekt i probabilitetit dhe ndarja e klasave.
 
 ---
 
-## 11. Statistical Significance — Wilcoxon Signed-Rank Test
+## 11. Rëndësia Statistikore - Testi Wilcoxon Signed-Rank
 
-To confirm that Gradient Boosting is **statistically** better (not just numerically), a Wilcoxon signed-rank test is performed on the per-fold CV F1 scores.
+Për të konfirmuar se Gradient Boosting është **statistikisht** superior (jo vetëm numerikisht), kryhet një test Wilcoxon signed-rank mbi rezultatet F1 të CV-së për-fold.
 
-### Setup
+### Konfigurimi
 
-- Same `StratifiedKFold(n_splits=5)` object used for all models → identical fold assignments → **paired comparison**
-- Reference: **Gradient Boosting** (highest CV F1 = 0.9992)
-- Test: one-sided, $H_1$: Gradient Boosting F1 > other model's F1
+- I njëjti objekt `StratifiedKFold(n_splits=5)` përdoret për të gjitha modelet → fold-e identike → **krahasim i çiftëzuar**
+- Referenca: **Gradient Boosting** (CV F1 më i lartë = 0.9992)
+- Testi: njëanësor, $H_1$: F1 e Gradient Boosting > F1 e modelit tjetër
 
-### Wilcoxon Signed-Rank Procedure
+### Procedura Wilcoxon Signed-Rank
 
-For $n = 5$ paired differences $d_i = \text{GB}_i - \text{Model}_i$:
+Për $n = 5$ diferenca të çiftëzuara $d_i = \text{GB}_i - \text{Modeli}_i$:
 
-1. Compute $|d_i|$ and rank them from smallest to largest
-2. Assign each rank the sign of $d_i$
-3. Compute $W^+ = \sum_{\{i: d_i > 0\}} R_i$ (sum of positive-difference ranks)
-4. Under $H_0$, $W^+$ follows a known discrete distribution; compute $p$-value
+1. Llogaritet $|d_i|$ dhe renditen nga më i vogli tek më i madhi
+2. Çdo renditje i caktohet shenja e $d_i$
+3. Llogaritet $W^+ = \sum_{\{i: d_i > 0\}} R_i$ (shuma e renditjeve të diferencave pozitive)
+4. Nën $H_0$, $W^+$ ndjek një shpërndarje diskrete të njohur; llogaritet p-vlera
 
-$$W^+ \geq W^+_{\text{critical}} \Rightarrow \text{reject } H_0$$
+$$W^+ \geq W^+_{\text{kritike}} \Rightarrow \text{refuzohet } H_0$$
 
-**Why Wilcoxon and not a t-test?**
-The t-test assumes normally distributed differences. With $n=5$ paired observations, normality cannot be verified. Wilcoxon is a non-parametric test that only requires the differences to be symmetric — a weaker, more defensible assumption.
+**Pse Wilcoxon dhe jo t-testi?**
+T-testi supozon diferenca të shpërndara normalisht. Me $n=5$ vëzhgime të çiftëzuara, normaliteti nuk mund të verifikohet. Wilcoxon është një test jo-parametrik që kërkon vetëm simetrinë e diferencave - një supozim më i dobët dhe më i mbrojtueshëm.
 
-**Minimum achievable p-value with n=5 (one-sided):**
+**P-vlera minimale e arritshme me n=5 (njëanësor):**
 
 $$P(W^+ = 15) = \frac{1}{2^5} = \frac{1}{32} = 0.03125 < 0.05$$
 
-(achieved when all 5 differences are positive and in the expected direction)
+(arrihet kur të 5 diferenrcat janë pozitive dhe në drejtimin e pritur)
 
-### Actual Results
+### Rezultatet Aktuale
 
-| Model | Mean F1 | Statistic (W+) | p-value | Significant? |
-|---|---|---|---|---|
-| **Gradient Boosting** | 0.9992 | — (reference) | — | — |
-| Random Forest | 0.9984 | 1.000 | 0.5000 | No |
-| SVM (Linear) | 0.9904 | 10.000 | 0.0625 | No |
-| Logistic Regression | 0.9872 | 15.000 | 0.0312 | **YES** |
-| Neural Network (MLP) | 0.9871 | 15.000 | 0.0312 | **YES** |
+| Modeli | Mesatare F1 | Statistika (W+) | p-vlera | Domethënës? |
+|---|---|-----------------|---------|-------------|
+| **Gradient Boosting** | 0.9992 | - (referenca)   | -       | -           |
+| Isolation Forest | 0.9984 | 1.000           | 0.5000  | Jo          |
+| SVM (Linear) | 0.9904 | 10.000          | 0.0625  | Jo          |
+| Regresion Logjistik | 0.9872 | 15.000          | 0.0312  | **PO**      |
+| Rrjeti Nervor (MLP) | 0.9871 | 15.000          | 0.0312  | **PO**      |
 
-**Interpretation:**
-- Gradient Boosting is **statistically significantly better** than Logistic Regression and MLP (p < 0.05)
-- The difference between Gradient Boosting and Random Forest is **not statistically significant** (p = 0.50) — they perform essentially identically on all 5 folds
-- The difference between Gradient Boosting and SVM Linear is borderline (p = 0.0625, just above α = 0.05)
+**Interpretimi:**
+- Gradient Boosting është **statistikisht superior** ndaj Regresionit Logjistik dhe MLP (p < 0.05)
+- Dallimi midis Gradient Boosting dhe Pyllit të Rastit **nuk është statistikisht domethënës** (p = 0.50) - ato performojnë esencialisht identikisht mbi të 5 fold-et
+- Dallimi midis Gradient Boosting dhe SVM Linear është kufitar (p = 0.0625, pak mbi α = 0.05)
 
-**Conclusion:** Gradient Boosting is declared the winner based on the highest CV F1 (0.9992) and statistically confirmed superiority over the weaker models.
-
----
-
-## 12. Additional Analysis Tools
-
-Three tools were added in Phase III specifically to go beyond scalar metrics and answer deeper questions: *why does the model decide this way?*, *is it actually better than Phase II on individual predictions?*, and *how sensitive is the best model to its key hyperparameter?*
+**Përfundimi:** Gradient Boosting shpallet fitues bazuar në CV F1 më të lartë (0.9992) dhe superioritetin statistikisht të konfirmuar ndaj modeleve më të dobëta.
 
 ---
 
-### 12.1 McNemar's Test — Phase II vs Phase III
+## 12. Mjetet Shtesë të Analizës
 
-#### What it is
+Tre mjete u shtuan në Fazën III specifikisht për të shkuar përtej metrikave skalare dhe për t'iu përgjigjur pyetjeve më të thella: *pse vendos modeli kështu?*, *a është vërtet superior ndaj Fazës II në parashikime individuale?*, dhe *sa i ndjeshëm është modeli më i mirë ndaj hiperparametrit kryesor?*
 
-McNemar's test is a **non-parametric paired test** that compares two classifiers on the *exact same test set*. While Wilcoxon compares cross-validation fold scores (training-time estimate), McNemar compares actual prediction errors on held-out data — a stronger, more direct comparison.
+---
 
-#### Why not just compare accuracy?
+### 12.1 Testi McNemar - Faza II vs Faza III
 
-If Phase II has Accuracy=99.03% and Phase III has Accuracy=99.03%, you cannot tell from the scalar metric alone whether the *same* 3 samples are misclassified or whether Phase III is right where Phase II is wrong (and vice versa). McNemar's test directly probes this.
+#### Çfarë është
 
-#### Setup in Phase III
+Testi McNemar është një **test i çiftëzuar jo-parametrik** që krahason dy klasifikues mbi *të njëjtën test set*. Ndërsa Wilcoxon krahason rezultatet e fold-eve të validimit të kryqëzuar (vlerësim i kohës së trajnimit), McNemar krahason gabimet aktuale të parashikimit mbi të dhënat e mbajtura - një krahasim më i fortë dhe më i drejtpërdrejtë.
 
-1. A **Phase II–equivalent Gradient Boosting** model is retrained on the same feature-selected training set (`X_train_sel`) using approximate Phase II best parameters:
+#### Pse jo thjesht të krahasojmë accuracy-n?
+
+Nëse Faza II ka Accuracy=99.03% dhe Faza III ka Accuracy=99.03%, nuk mund të dallohet nga metrika skalare nëse *të njëjtat* 3 mostra keq-klasifikohen ose nëse Faza III ka të drejtë aty ku Faza II gaboi (dhe anasjelltas). Testi McNemar e provon drejtpërdrejt këtë.
+
+#### Konfigurimi në Fazën III
+
+1. Një model **Gradient Boosting ekuivalent Fazës II** ri-trajnohet mbi të njëjtin set trajnimi me zgjedhje veçorish (`X_train_sel`) duke përdorur parametra të afërt me Fazën II:
    ```
    n_estimators=200, learning_rate=0.1, max_depth=3,
    subsample=1.0, min_samples_split=2
    ```
-2. Both models are evaluated on the **identical** `X_test_sel` (310 samples)
+2. Të dy modelet vlerësohen mbi **të njëjtën** `X_test_sel` (310 mostra)
 
-#### The Contingency Table
+#### Tabela e Kushtëzuar
 
-|  | **Ph3 correct** | **Ph3 wrong** |
+|  | **Ph3 saktë** | **Ph3 gabim** |
 |---|---|---|
-| **Ph2 correct** | $a$ (both right) | $c$ (Ph2 right, Ph3 wrong) |
-| **Ph2 wrong** | $b$ (Ph2 wrong, Ph3 right) | $d$ (both wrong) |
+| **Ph2 saktë** | $a$ (të dy saktë) | $c$ (Ph2 saktë, Ph3 gabim) |
+| **Ph2 gabim** | $b$ (Ph2 gabim, Ph3 saktë) | $d$ (të dy gabim) |
 
-Under $H_0$: $b = c$ (both classifiers make the same number of discordant errors).
+Nën $H_0$: $b = c$ (të dy klasifikuesit bëjnë të njëjtin numër gabimesh diskordante).
 
-#### Test Statistic (Exact Binomial)
+#### Statistika e Testit (Binomiale Ekzakte)
 
-The exact McNemar test uses the binomial distribution on the discordant pairs $(b, c)$:
+Testi ekzakt McNemar përdor shpërndarjen binomiale mbi çiftet diskordante $(b, c)$:
 
-$$p\text{-value} = 2 \sum_{k=0}^{\min(b,c)} \binom{b+c}{k} \left(\frac{1}{2}\right)^{b+c}$$
+$$p\text{-vlera} = 2 \sum_{k=0}^{\min(b,c)} \binom{b+c}{k} \left(\frac{1}{2}\right)^{b+c}$$
 
-This is the probability of observing a split as extreme as $(b, c)$ by chance if both classifiers truly have the same error distribution. When $b > c$ and $p < 0.05$, Phase III makes significantly fewer errors.
+Kjo është probabiliteti i vëzhgimit të një ndarjeje po aq ekstreme si $(b, c)$ rastësisht nëse të dy klasifikuesit vërtet kanë të njëjtën shpërndarje gabimesh. Kur $b > c$ dhe $p < 0.05$, Faza III bën dukshëm më pak gabime.
 
-#### Why McNemar over a z-test?
+#### Pse McNemar dhe jo z-testi?
 
-McNemar's test accounts for the **paired** (correlated) nature of the predictions — both models see the same test sample. An unpaired test like the z-test for proportions would be incorrect because the independence assumption would be violated (the same sample is predicted by both models).
+Testi McNemar merr parasysh natyrën **të çiftëzuar** (të korreluar) të parashikimeve - të dy modelet shohin të njëjtën mostër testimi. Një test jo-çiftëzuar si z-testi për proporcionet do të ishte i gabuar sepse supozimi i pavarësisë do të shkelej (e njëjta mostër parashikohet nga të dy modelet).
 
 ---
 
-### 12.2 SHAP — Model Interpretability
+### 12.2 SHAP - Interpretueshmëria e Modelit
 
-#### What SHAP is
+#### Çfarë është SHAP
 
-**SHapley Additive exPlanations** (Lundberg & Lee, 2017) assigns a contribution value $\phi_j$ to each feature $j$ for a specific prediction. It is grounded in **cooperative game theory** — each feature is treated as a "player" and its SHAP value is its fair share of the total prediction.
+**SHapley Additive exPlanations** (Lundberg & Lee, 2017) i cakton një vlerë kontributi $\phi_j$ çdo veçorie $j$ për një parashikim specifik. Mbështetet në **teorinë e lojërave kooperative** - çdo veçori trajtohet si "lojtar" dhe vlera e saj SHAP është pjesa e saj e drejtë e parashikimit total.
 
-#### The Shapley Value Formula
+#### Formula e Vlerës Shapley
 
-For a model $f$, the SHAP value of feature $j$ for sample $\mathbf{x}$ is:
+Për një model $f$, vlera SHAP e veçorisë $j$ për mostrën $\mathbf{x}$ është:
 
 $$\phi_j(\mathbf{x}) = \sum_{S \subseteq F \setminus \{j\}} \frac{|S|!\,(|F|-|S|-1)!}{|F|!} \left[f(S \cup \{j\}) - f(S)\right]$$
 
-Where:
-- $F$ = full set of features
-- $S$ = a subset of features **not including** $j$
-- $f(S)$ = model output using only features in $S$ (others replaced by their marginal expectation)
-- The fraction is a **weighting factor** that averages over all possible orderings of features
+Ku:
+- $F$ = bashkësia e plotë e veçorive
+- $S$ = një nënbashkësi veçorish **pa përfshirë** $j$
+- $f(S)$ = dalja e modelit duke përdorur vetëm veçoritë në $S$ (të tjerat zëvendësohen me pritshmërinë e tyre marxhinale)
+- Fraksioni është një **faktor peshimi** që mesatarizon mbi të gjitha renditjet e mundshme të veçorive
 
-This is computationally intractable for large $|F|$ — the exact calculation requires $2^{|F|}$ model evaluations.
+Kjo është llogaritimisht e parealizueshme për $|F|$ të madh - llogaritja ekzakte kërkon $2^{|F|}$ vlerësime modeli.
 
-#### TreeSHAP (Efficient Exact Computation)
+#### TreeSHAP (Llogaritje Ekzakte Efikase)
 
-For tree ensembles (Random Forest, Gradient Boosting), **TreeSHAP** computes exact Shapley values in **polynomial time** $O(TLD^2)$ by exploiting the tree structure:
-- $T$ = number of trees
-- $L$ = max leaves per tree
-- $D$ = max depth
+Për ansambël pemësh (Isolation Forest, Gradient Boosting), **TreeSHAP** llogarit vlera ekzakte Shapley në **kohë polinomiale** $O(TLD^2)$ duke shfrytëzuar strukturën e pemës:
+- $T$ = numri i pemëve
+- $L$ = gjethet maksimale për pemë
+- $D$ = thellësia maksimale
 
-The key insight: traversing a single path in a decision tree already conditions on a subset of features. TreeSHAP reuses these traversals to compute exact Shapley values without any approximation.
+Njohja kryesore: kalimi nëpër një shteg të vetëm në pemën e vendimit tashmë kushtezon mbi një nënbashkësi veçorish. TreeSHAP ripërdor këto kalime për të llogaritur vlera ekzakte Shapley pa asnjë aproksimim.
 
-#### What the Plots Show
+#### Çfarë Tregojnë Grafet
 
-**Global importance bar chart** (`shap_feature_importance.png`):
+**Grafiku i shtylave të nevojës globale** (`shap_feature_importance.png`):
 
-$$\text{Importance}(j) = \frac{1}{n} \sum_{i=1}^{n} \frac{1}{K} \sum_{k=1}^{K} |\phi_j^{(k)}(\mathbf{x}_i)|$$
+$$\text{Rëndësia}(j) = \frac{1}{n} \sum_{i=1}^{n} \frac{1}{K} \sum_{k=1}^{K} |\phi_j^{(k)}(\mathbf{x}_i)|$$
 
-Mean absolute SHAP value averaged over samples and classes. Features with high values here push predictions away from the baseline most strongly, regardless of direction.
+Vlera mesatare absolute SHAP e mesatarizuar mbi mostra dhe klasa. Veçoritë me vlera të larta këtu i shtyjnë parashikimet larg bazës më fort, pavarësisht drejtimit.
 
-**Beeswarm plot** (`shap_beeswarm.png`):
+**Grafiku beeswarm** (`shap_beeswarm.png`):
 
-For one class (e.g., `High`), each dot is one test sample. The x-axis is the SHAP value (positive = pushes toward `High`, negative = pushes away). Color encodes the feature's actual value (red = high, blue = low). This plot shows:
-- Which features are most discriminative
-- Whether high feature values drive higher or lower predictions
-- Outlier samples that are hard to classify
+Për një klasë (p.sh., `High`), çdo pikë është një mostër testimi. Boshti x është vlera SHAP (pozitive = shtyn drejt `High`, negative = shtyn larg). Ngjyra kodon vlerën aktuale të veçorisë (e kuqe = e lartë, blu = e ulët). Ky grafik tregon:
+- Cilat veçori janë më diskriminuese
+- Nëse vlerat e larta të veçorive nxisin parashikime më të larta apo më të ulëta
+- Mostrat outlier që janë të vështira për t'u klasifikuar
 
-#### Why SHAP over standard feature importance?
+#### Pse SHAP dhe jo rëndësia standarde e veçorive?
 
-| | Gini Importance | Permutation Importance | SHAP |
-|---|---|---|---|
-| Accounts for feature interactions | No | Partially | Yes |
-| Per-sample explanation | No | No | Yes |
-| Consistent across model types | No | Yes | Yes |
-| Exact (not approximated) for trees | N/A | No | **Yes** |
-| Handles correlated features | Poorly | Poorly | Better |
+| | Rëndësia e Ginit | Rëndësia e Permutacionit | SHAP |
+|---|------------------|--------------------------|---|
+| Merr parasysh ndërveprimet e veçorive | Jo               | Pjesërisht               | Po |
+| Shpjegim për-mostër | Jo               | Jo                       | Po |
+| Konsistent midis llojeve të modelit | Jo               | Po                       | Po |
+| Ekzakt (pa aproksimim) për pemët | N/A              | Jo                       | **Po** |
+| Trajton veçoritë e korreluara | Dobët            | Dobët                    | Më mirë |
 
-Standard Gini importance counts how often a feature is used and the average impurity decrease — it overestimates correlated features and gives no information about direction. SHAP values are unique and satisfy the **efficiency**, **symmetry**, **dummy**, and **additivity** axioms from game theory.
+Rëndësia standarde Gini numëron sa shpesh përdoret një veçori dhe ulja mesatare e papastërtisë - mbivlerëson veçoritë e korreluara dhe nuk jep informacion mbi drejtimin. Vlerat SHAP janë unike dhe plotësojnë aksiomët e **efikasitetit**, **simetrisë**, **dummyt** dhe **additivitetit** nga teoria e lojërave.
 
 ---
 
-### 12.3 Validation Curve — Hyperparameter Sensitivity
+### 12.3 Kurba e Validimit - Ndjeshmëria ndaj Hiperparametrave
 
-#### What it shows
+#### Çfarë tregon
 
-A validation curve plots the model's training and validation F1 score as a single hyperparameter varies, with all others held fixed. It answers:
+Kurba e validimit paraqet rezultatin F1 të trajnimit dhe validimit të modelit ndërsa varion një hiperparametër i vetëm, duke mbajtur të tjerët fikse. I përgjigjet pyetjes:
 
-> *"How sensitive is the model's performance to this hyperparameter? Where is the optimum? Does the model overfit for large values?"*
+> *"Sa i ndjeshëm është performanca e modelit ndaj këtij hiperparametri? Ku është optimumi? A mbi-përshtatet modeli për vlera të mëdha?"*
 
-#### Why learning_rate for Gradient Boosting?
+#### Pse learning_rate për Gradient Boosting?
 
-`learning_rate` (shrinkage $\eta$) is Gradient Boosting's most influential single hyperparameter. It directly controls:
-- **Underfitting** (low $\eta$, too few trees): high bias, both curves low
-- **Good fit** (moderate $\eta$): train ≈ validation, both high
-- **Overfitting** (high $\eta$): training curve stays high, validation drops
+`learning_rate` (tkurrja $\eta$) është hiperparametri më ndikues i vetëm i Gradient Boosting. Kontrollon drejtpërdrejt:
+- **Nën-përshtatja** ($\eta$ i vogël, pemë të pakta): bias i lartë, të dy kurbat të ulëta
+- **Përshtatje e mirë** ($\eta$ moderate): trajnimi ≈ validimi, të dyja të larta
+- **Mbi-përshtatja** ($\eta$ i lartë): kurba e trajnimit qëndron e lartë, validimi bie
 
-This makes it the most informative axis for a diagnostic plot.
+Kjo e bën atë boshtin më informues për një grafik diagnostik.
 
-#### Implementation
+#### Implementimi
 
-The sweep uses `sklearn.model_selection.validation_curve` (sklearn fallback, since Yellowbrick is incompatible with Python 3.14 due to the removal of the `distutils` module in Python 3.12+):
+Sweepingu përdor `sklearn.model_selection.validation_curve` (fallback sklearn, pasi Yellowbrick është i papërputhshëm me Python 3.14 për shkak të heqjes së modulit `distutils` në Python 3.12+):
 
 ```python
 param_range = [0.005, 0.01, 0.03, 0.05, 0.1, 0.15, 0.2, 0.3]
@@ -910,106 +911,106 @@ train_scores, val_scores = validation_curve(
 )
 ```
 
-For each value in `param_range`, the estimator is fit 5 times (once per fold). The mean ± std of training and validation scores are plotted. The x-axis uses a log scale since `learning_rate` spans two orders of magnitude.
+Për çdo vlerë në `param_range`, estimatori trajnohet 5 herë (një herë për fold). Mesatarja ± std e rezultateve të trajnimit dhe validimit paraqiten në grafik. Boshti x përdor shkallë logaritmike pasi `learning_rate` shtrihet mbi dy rende magnitude.
 
-#### Learning Curve (sklearn)
+#### Kurba e të Mësuarit (sklearn)
 
-Also generated: a **learning curve** that shows how F1 varies with training set size (10% → 100%). This diagnoses:
-- **High bias** (underfitting): both curves plateau below 1.0
-- **High variance** (overfitting): training curve >> validation curve with a large gap
-- **Good fit**: curves converge near 1.0 as training size grows
+Gjithashtu gjenerohet: një **kurbë të mësuari** që tregon si varion F1 me madhësinë e set-it të trajnimit (10% → 100%). Kjo diagnostikon:
+- **Bias i lartë** (nën-përshtatja): të dyja kurbat plafonohen nën 1.0
+- **Variancë e lartë** (mbi-përshtatja): kurba e trajnimit >> kurba e validimit me hendek të madh
+- **Përshtatje e mirë**: kurbat konvergjojnë pranë 1.0 me rritjen e madhësisë trajnuese
 
-The Phase III best model (Gradient Boosting) shows curves that converge quickly → the model is not data-hungry and is not overfitting.
+Modeli më i mirë i Fazës III (Gradient Boosting) tregon kurbat që konvergjojnë shpejt → modeli nuk është i varfër nga të dhënat dhe nuk mbi-përshtatet.
 
 ---
 
-## 13. Results
+## 13. Rezultatet
 
-### Full Phase III Results Table
+### Tabela e Plotë e Rezultateve të Fazës III
 
-| Model | CV F1 | Accuracy | Precision | Recall | F1 (macro) | ROC-AUC |
+| Modeli | CV F1 | Accuracy | Precision | Recall | F1 (macro) | ROC-AUC |
 |---|---|---|---|---|---|---|
 | **Gradient Boosting** | **0.9992** | 0.9903 | 0.9904 | 0.9905 | 0.9904 | **0.9999** |
-| Random Forest | 0.9984 | 0.9903 | 0.9904 | 0.9905 | 0.9904 | 0.9999 |
+| Isolation Forest | 0.9984 | 0.9903 | 0.9904 | 0.9905 | 0.9904 | 0.9999 |
 | SVM (Linear) | 0.9904 | 0.9839 | 0.9837 | 0.9840 | 0.9838 | 0.9995 |
-| Logistic Regression | 0.9872 | 0.9806 | 0.9806 | 0.9807 | 0.9806 | 0.9993 |
-| Neural Network (MLP) | 0.9871 | 0.9742 | 0.9745 | 0.9746 | 0.9743 | 0.9989 |
+| Regresion Logjistik | 0.9872 | 0.9806 | 0.9806 | 0.9807 | 0.9806 | 0.9993 |
+| Rrjeti Nervor (MLP) | 0.9871 | 0.9742 | 0.9745 | 0.9746 | 0.9743 | 0.9989 |
 
-### Winner: Gradient Boosting
+### Fituesi: Gradient Boosting
 
 ```
-Best Parameters : n_estimators=500, learning_rate=0.2, max_depth=5,
-                  subsample=0.9, min_samples_split=5
-CV F1 (macro)   : 0.9992
-Accuracy        : 0.9903  (307/310 correct)
-F1 (macro)      : 0.9904
-ROC-AUC (macro) : 0.9999
+Parametrat Më të Mirë : n_estimators=500, learning_rate=0.2, max_depth=5,
+                        subsample=0.9, min_samples_split=5
+CV F1 (macro)         : 0.9992
+Accuracy              : 0.9903  (307/310 të sakta)
+F1 (macro)            : 0.9904
+ROC-AUC (macro)       : 0.9999
 ```
 
 ---
 
-## 14. Phase II vs Phase III Comparison
+## 14. Krahasimi Faza II vs Faza III
 
-| Model | Ph2 F1 | Ph3 F1 | Delta F1 | Ph2 CV F1 | Ph3 CV F1 |
+| Modeli | F1 Ph2 | F1 Ph3 | Delta F1 | CV F1 Ph2 | CV F1 Ph3 |
 |---|---|---|---|---|---|
-| Logistic Regression | 0.9741 | 0.9806 | **+0.0065** | 0.9847 | 0.9872 |
-| Random Forest | 0.9904 | 0.9904 | +0.0000 | 0.9968 | 0.9984 |
+| Regresion Logjistik | 0.9741 | 0.9806 | **+0.0065** | 0.9847 | 0.9872 |
+| Isolation Forest | 0.9904 | 0.9904 | +0.0000 | 0.9968 | 0.9984 |
 | Gradient Boosting | 0.9904 | 0.9904 | +0.0000 | 0.9984 | **0.9992** |
 | SVM (Linear) | 0.9709 | 0.9838 | **+0.0129** | 0.9863 | 0.9904 |
-| Neural Network (MLP) | 0.9712 | 0.9743 | **+0.0031** | 0.9766 | 0.9871 |
+| Rrjeti Nervor (MLP) | 0.9712 | 0.9743 | **+0.0031** | 0.9766 | 0.9871 |
 
-**Key observations:**
-1. **SVM Linear had the largest test F1 improvement (+0.0129)** — wider C range (up to 100) found C=50 which Phase II's grid (max C=10) missed entirely
-2. **Logistic Regression improved by +0.0065** — C=100 was outside Phase II's grid
-3. **RF and GB test F1 unchanged** — they were already near-optimal; Phase III confirmed it with higher CV confidence
-4. **GB CV F1 improved from 0.9984 → 0.9992** — the larger parameter space (500 trees, subsample=0.9) squeezed out remaining variance
-5. **All models improved or held** — no model degraded, confirming the wider search was beneficial
+**Vëzhgimet kryesore:**
+1. **SVM Linear pati përmirësimin më të madh (+0.0129)** - gama më e gjerë e C (deri në 100) gjeti C=50 që gridi i Fazës II (max C=10) e kishte plotësisht jashtë
+2. **Regresioni Logjistik u përmirësua me +0.0065** - C=100 ishte jashtë gridit të Fazës II
+3. **F1 e testit të RF dhe GB nuk ndryshoi** - ato ishin tashmë gati-optimale; Faza III e konfirmoi me besueshmëri më të lartë CV
+4. **CV F1 e GB u përmirësua nga 0.9984 → 0.9992** - hapësira më e madhe e parametrave (500 pemë, subsample=0.9) nxori variancën e mbetur
+5. **Të gjitha modelet u përmirësuan ose qëndruan** - asnjë model nuk u degradua, duke konfirmuar se kërkimi i gjerë ishte i dobishëm
 
 ---
 
-## 15. Output Files
+## 15. Skedarët e Prodhuar
 
-### CSV / Text Reports
+### Raporte CSV / Tekst
 
-| File | Description |
+| Skedari | Përshkrimi |
 |---|---|
-| `model_results_phase3.csv` | All 5 model metrics + best hyperparameters |
-| `comparison_phase2_vs_phase3.csv` | Phase II vs III delta table (F1, CV F1, Accuracy) |
-| `classification_reports_phase3.txt` | Full per-class precision/recall/F1 for all models |
-| `wilcoxon_results.txt` | Wilcoxon signed-rank test: GB vs each other model (5 folds) |
-| `mcnemar_results.txt` | McNemar's test: Phase II GB vs Phase III best (test-set errors) |
-| `final_report_phase3.md` | Executive summary report |
+| `model_results_phase3.csv` | Të gjitha metrikat e 5 modeleve + hiperparametrat më të mirë |
+| `comparison_phase2_vs_phase3.csv` | Tabela delta Faza II vs III (F1, CV F1, Accuracy) |
+| `classification_reports_phase3.txt` | Precision/Recall/F1 i plotë për-klasë për të gjitha modelet |
+| `wilcoxon_results.txt` | Testi Wilcoxon signed-rank: GB vs çdo model tjetër (5 fold-e) |
+| `mcnemar_results.txt` | Testi McNemar: GB Faza II vs fituesi Faza III (gabimet e test set-it) |
+| `final_report_phase3.md` | Raporti ekzekutiv përmbledhës |
 
-### Core Visualizations
+### Vizualizimet Kryesore
 
-| File | What it shows | Why it matters |
-|---|---|---|
-| `algorithm_comparison_phase3.png` | Grouped bar chart: Accuracy, Precision, Recall, F1 for all 5 models | Quick visual comparison at a glance |
-| `phase2_vs_phase3_comparison.png` | Side-by-side F1 bars (Ph2 vs Ph3) with Δ annotations | Directly shows which models improved and by how much |
-| `feature_selection.png` | Importance bars (blue=kept, red=removed) + threshold line | Shows which features were eliminated and why |
-| `feature_importance_phase3.png` | Top features by RF Gini importance after selection | Which features drive the ensemble's splits |
-| `roc_auc_curves_phase3.png` | Macro-average ROC curves for all 5 models | Evaluates probability quality, not just hard predictions |
-| `calibration_curves_phase3.png` | Predicted probability vs. actual fraction per class | Checks if predicted 0.8 actually means 80% of the time |
-| `confusion_matrix_*.png` | 3×3 heatmap for each model (5 files) | Per-class error pattern — which classes get confused |
+| Skedari | Çfarë tregon                                                             | Pse ka rëndësi                                                     |
+|---|--------------------------------------------------------------------------|--------------------------------------------------------------------|
+| `algorithm_comparison_phase3.png` | Grafiku me shtylla grupore: Accuracy, Precision, Recall, F1 për 5 modelet | Krahasim vizual i shpejtë me shikim të parë                        |
+| `phase2_vs_phase3_comparison.png` | Shtylla krah-për-krah F1 (Ph2 vs Ph3) me shënime Δ                       | Tregon drejtpërdrejt cilat modele u përmirësuan dhe me sa          |
+| `feature_selection.png` | Shtylla rëndësish (blu=mbajtur, kuq=hequr) + vija e pragut               | Tregon cilat veçori u eliminuan dhe pse                            |
+| `feature_importance_phase3.png` | Veçoritë kryesore sipas nevojës Gini të RF pas zgjedhjes                 | Cilat veçori nxisin ndarjet e ansamblit                            |
+| `roc_auc_curves_phase3.png` | Kurbat ROC makro-mesatare për 5 modelet                                  | Vlerëson cilësinë e probabilitetit, jo vetëm parashikimet e ngurta |
+| `calibration_curves_phase3.png` | Probabiliteti i parashikuar vs. fraksioni aktual për-klasë               | Kontrollon nëse 0.8 i parashikuar do të thotë 80% e herëve         |
+| `confusion_matrix_*.png` | Heatmap 3×3 për çdo model (5 skedarë)                                    | Modeli i gabimit për-klasë - cilat klasa ngatërrohen               |
 
-### Diagnostic & Interpretability Plots
+### Grafet Diagnostike dhe të Interpretueshmërisë
 
-| File | What it shows | Why it matters |
-|---|---|---|
-| `learning_curves_phase3.png` | Train vs. validation F1 as training size grows | Diagnoses bias-variance; proves model is not overfitting |
-| `shap_feature_importance.png` | Mean \|SHAP\| per feature (global) — best model | Model-theory–based importance; accounts for interactions and direction |
-| `shap_beeswarm.png` | Per-sample SHAP values for one class — best model | Shows how individual samples are explained; reveals outliers |
-| `yellowbrick_validation_curve.png` | F1 vs `learning_rate` sweep for GB | Reveals optimal learning rate and sensitivity to this hyperparameter |
+| Skedari | Çfarë tregon                                                | Pse ka rëndësi                                                                 |
+|---|-------------------------------------------------------------|--------------------------------------------------------------------------------|
+| `learning_curves_phase3.png` | F1 trajnimit vs. validimit me rritjen e madhësisë trajnuese | Diagnostikon bias-variancën; provon se modeli nuk mbi-përshtatet               |
+| `shap_feature_importance.png` | Mean \|SHAP\| për-veçori (global) - modeli më i mirë        | Nevojë e bazuar në teorinë e modelit; merr parasysh ndërveprimet dhe drejtimin |
+| `shap_beeswarm.png` | Vlerat SHAP për-mostër për një klasë - modeli më i mirë     | Tregon si shpjegohen mostrat individuale; zbulon outliers                      |
+| `yellowbrick_validation_curve.png` | F1 vs sweep i `learning_rate` për GB                        | Zbulon shkallën optimale të mësimit dhe ndjeshmërinë ndaj këtij hiperparametri |
 
 ---
 
 ## 16. Konkluzionet dhe Impakti i Projektit
 
 ### Konkluzionet në lidhje me rezultatet
-Pas tre fazave të eksperimentimit intensiv, përfundojmë se modeli Gradient Boosting (dhe ngjashëm Random Forest) arrin të parashikojë me saktësi pothuajse perfekte (Accuracy 99.03%, F1 0.9992) varësinë thelbësore mes variablave (energjia e rinovueshme, koha, etj.) dhe nivelit ditor të karbonit në Kosovë. Modelet dëshmuan se zgjedhja e targetit në tre klasa dhe inxhinieria e veçorive në Fazën I kanë qenë jashtëzakonisht efikase, duke filtruar zhurmën (prej 25 veçori në 9 themelore). Faza III plotësoi me sukses këtë detyrë, jo thjesht numerikisht, por duke e lidhur atë me rëndësi statistikore.
+Pas tre fazave të eksperimentimit intensiv, përfundojmë se modeli Gradient Boosting (dhe ngjashëm Isolation Forest) arrin të parashikojë me saktësi pothuajse perfekte (Accuracy 99.03%, F1 0.9992) varësinë thelbësore mes variablave (energjia e rinovueshme, koha, etj.) dhe nivelit ditor të karbonit në Kosovë. Modelet dëshmuan se zgjedhja e targetit në tre klasa dhe inxhinieria e veçorive në Fazën I kanë qenë jashtëzakonisht efikase, duke filtruar zhurmën (prej 25 veçori në 9 themelore). Faza III plotësoi me sukses këtë detyrë, jo thjesht numerikisht, por duke e lidhur atë me rëndësi statistikore.
 
 ### Kontributi ynë unik (që të tjerët nuk e kanë dhënë)
-Kontributi ynë i drejtpërdrejtë është lidhja e ndërtimit të një master-dataseti të personalizuar të Kosovës (agreguar nga miliona rreshta të dhënash orare nga 2021-2025 në një regjistër ditor, të pastruar e funksional) dhe validimi i modeleve përmes rigorozitetit real statistikor (Testi Wilcoxon). Rrallëherë datasetet publike për sektorin e energjisë së Kosovës janë të kthyera në probleme standarde të klasifikimit multiklasor me inxhinieri të tillë të detajuar (si p.sh. carbon_intensity_gap). Ne nuk kemi zbatuar vetëm modelin; ne kemi krijuar terrenin dhe problemin, e kemi vërtetuar se modeli e zgjidh, pastaj dhe e kemi provuar ashpër këtë përmes testit statistikor. 
+Kontributi ynë i drejtpërdrejtë është lidhja e ndërtimit të një master-dataseti të personalizuar të Kosovës (agreguar nga miliona rreshta të dhënash orare nga 2021-2025 në një regjistër ditor, të pastruar e funksional) dhe validimi i modeleve përmes rigorozitetit real statistikor (Testi Wilcoxon dhe Testi McNemar). Rrallëherë datasetet publike për sektorin e energjisë së Kosovës janë të kthyera në probleme standarde të klasifikimit multiklasor me inxhinieri të tillë të detajuar (si p.sh. carbon_intensity_gap). Ne nuk kemi zbatuar vetëm modelin; ne kemi krijuar terrenin dhe problemin, e kemi vërtetuar se modeli e zgjidh, pastaj dhe e kemi provuar ashpër këtë përmes testeve statistikore dhe analizës SHAP.
 
 ### Si t'i lexojmë rezultatet, kujt i ndihmojnë dhe si?
 Këto rezultate tregojnë probabilitetin se cila normë karboni ditor (`High`, `Medium`, `Low`) pritet bazuar në inputet ditore.
@@ -1017,11 +1018,11 @@ Këto rezultate tregojnë probabilitetin se cila normë karboni ditor (`High`, `
 - **Si i ndihmojnë:** Mundësojnë gjenerimin e alarmeve të automatizuara ditore; për shembull aktivizimin e incentiva financiare (tarifave të ulëta) kur mjedisi theksohet si `Low` ose dërgimin e sinjaleve për kufizime në prodhimet ndotëse kur parashikohet `High` intensity, duke u lidhur drejtpërdrejt me planin dhe axhendën e gjelbërt të reduktimit të emetimeve.
 
 ### Çka mund të bëhet në të ardhmen? (Future Work)
-Si zhvillime të së ardhmes, modeli ditor mund të ngushtohet në një version predikues 'Real-Time' që jep target për orën e radhës në vend të ditës së radhës. Modele të kalibruara mund të shtohen me analiza të kohës (Time-Series Forecasing me LSTM), dhe puna mund të pasurohet më shumë duke lidhur një API meteorologjike për të marrë atributet si era, ndriçimi i diellit apo rreshjet—faktorë që padiskutim do i jepnin përgjigje origjinës së variacionit të gjetur. Aplikimi imedat pastaj mund të behej integrimi i modeleve të fitura nga Faza III në ndonjë web/mobile-app ose dashboard ku mund të kyçen the palët e prekura drejtperdrejtë në këtë domen.
+Si zhvillime të së ardhmes, modeli ditor mund të ngushtohet në një version predikues 'Real-Time' që jep target për orën e radhës në vend të ditës së radhës. Modele të kalibruara mund të shtohen me analiza të kohës (Time-Series Forecasting me LSTM), dhe puna mund të pasurohet më shumë duke lidhur një API meteorologjike për të marrë atributet si era, ndriçimi i diellit apo rreshjet - faktorë që padiskutim do i jepnin përgjigje origjinës së variacionit të gjetur. Aplikimi i menjëhershëm pastaj mund të bëhej integrimi i modeleve të fitura nga Faza III në ndonjë web/mobile-app ose dashboard ku mund të kyçen palët e prekura drejtpërdrejt në këtë domen.
 
 ---
 
-## References
+## Referenca
 
 - Breiman, L. (2001). *Random Forests*. Machine Learning, 45, 5–32.
 - Friedman, J. H. (2001). *Greedy Function Approximation: A Gradient Boosting Machine*. Annals of Statistics, 29(5), 1189–1232.
