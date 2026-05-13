@@ -663,13 +663,13 @@ Kjo heq veçoritë me kontribut gati-zero, redukton zhurmën dhe shpejton trajni
 ## Strategjia e kërkimit të hiperparametrave
 
 ### RandomizedSearchCV
-Në vend të testimit exhaustiv (GridSearchCV), RandomizedSearchCV kampionon $n\_iter$ kombinime rastësisht nga hapësira e plotë e parametrave:
+Në vend të testimit lodhës (GridSearchCV), RandomizedSearchCV kampionon $n\_iter$ kombinime rastësisht nga hapësira e plotë e parametrave:
 
 - Gradient Boosting: 1,200 kombinime të mundshme → testohen 30
 - Random Forest: 540 kombinime → testohen 30
 - MLP: 60 kombinime → testohen 30
-- Logistic Regression: 11 kombinime → testohen të gjitha (exhaustiv)
-- SVM Linear: 9 kombinime → testohen të gjitha (exhaustiv)
+- Logistic Regression: 11 kombinime → testohen të gjitha (lodhës)
+- SVM Linear: 9 kombinime → testohen të gjitha (lodhës)
 
 Kjo qasje shploron hapësira shumë herë më të mëdha sesa Faza II brenda kohës së ngjashme të ekzekutimit.
 

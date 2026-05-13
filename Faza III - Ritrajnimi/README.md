@@ -30,7 +30,7 @@
 
 ## 1. Përmbledhje
 
-**Qëllimi:** Të merren pesë algoritmet suprevizuara me performancën më të lartë nga Faza II, të zgjerohet hapësira e kërkimit të hiperparametrave dhe të identifikohet një model i vetëm statistikisht superior për parashikimin e klasës ditore të intensitetit të karbonit në rrjetin elektrik të Kosovës.
+**Qëllimi:** Të merren pesë algoritmet supervised me performancën më të lartë nga Faza II, të zgjerohet hapësira e kërkimit të parametrave dhe të identifikohet një model i vetëm statistikisht superior për parashikimin e klasës ditore të intensitetit të karbonit në rrjetin elektrik të Kosovës.
 
 **Variabla e synuar:** `target_quantile_class` - tre klasa: `High`, `Medium`, `Low`
 
@@ -109,7 +109,7 @@ Dataset i Fazës I (1,550 × 20)
 
 ## 4. Hapi 0 - Ngarkimi dhe Ndarja e të Dhënave
 
-### Ndarja Stratifikuar Train/Test
+### Ndarja e Stratifikuar Train/Test
 
 Dataseti ndahet 80% trajnim / 20% testim duke përdorur `stratify=y`:
 
@@ -151,7 +151,7 @@ Ku:
 
 **Pse?** Algoritmet si Regresioni Logjistik, SVM dhe MLP optimizojnë një funksion humbje me metoda të bazuara në gradient. Një veçori me vlera në [0, 10,000] do të prodhonte gradienta 1,000× më të mëdha se një veçori me vlera në [0, 10], duke bërë optimizuesin të lëvizë në mënyrë disproporcionale. Standardizimi eliminon këtë varësi nga shkalla.
 
-Modelet e bazuara në pemë (Isolation Forest, Gradient Boosting) janë invariante nga shkalla - ato ndajnë mbi praga dhe kujdesen vetëm për renditjen e veçorive, jo për madhësinë. StandardScaler nuk i dëmton as ato.
+Modelet e bazuara në pemë (Isolation Forest, Gradient Boosting) janë invariante nga shkalla - ato kujdesen vetëm për renditjen e veçorive, jo për madhësinë. StandardScaler nuk i dëmton as ato.
 
 ### 5.2 OneHotEncoder (Kolonat Kategorike)
 
@@ -240,7 +240,7 @@ Kjo redukton zhurmën nga veçoritë e parëndësishme, shpejton trajnimin dhe m
 
 ### RandomizedSearchCV
 
-Në vend të testimit exhaustiv të çdo kombinimi (GridSearchCV), RandomizedSearchCV kampionon $n\_iter$ kombinime në mënyrë uniforme rastësisht nga shpërndarjet e parametrave:
+Në vend të testimit lodhës të çdo kombinimi (GridSearchCV), RandomizedSearchCV kampionon $n\_iter$ kombinime në mënyrë uniforme rastësisht nga shpërndarjet e parametrave:
 
 $$\theta^* = \arg\max_{\theta \in S} \mathbb{E}[\text{Rezultati CV}(\theta)], \quad S \subset \Theta, \; |S| = n\_iter$$
 
@@ -251,10 +251,10 @@ $$\theta^* = \arg\max_{\theta \in S} \mathbb{E}[\text{Rezultati CV}(\theta)], \q
 
 **n_iter kufizohet për çdo model:**
 ```
-Regresion Logjistik : min(30, 11)  = 11   ← exhaustiv (vetëm 11 kombinime)
-Isolation Forest      : min(30, 540) = 30   ← nënbashkësi rastësore
+Regresion Logjistik : min(30, 11)  = 11   ← lodhës (vetëm 11 kombinime)
+Isolation Forest    : min(30, 540) = 30   ← nënbashkësi rastësore
 Gradient Boosting   : min(30,1200) = 30   ← nënbashkësi rastësore
-SVM (Linear)        : min(30,   9) =  9   ← exhaustiv (vetëm 9 kombinime)
+SVM (Linear)        : min(30,   9) =  9   ← lodhës (vetëm 9 kombinime)
 MLP                 : min(30,  60) = 30   ← nënbashkësi rastësore
 ```
 
@@ -382,8 +382,8 @@ Pemët e thella individuale kanë bias të ulët por variancë të lartë (mbi-p
 |---|---|-------------------------------------------------------------------------------|
 | `n_estimators` | 100 | Numri i pemëve - më shumë pemë → variancë më e ulët por kthesa zbriste        |
 | `max_depth` | 8 | Thellësia maksimale e pemës - parandalon mbi-përshtatjen e pemëve individuale |
-| `min_samples_leaf` | 4 | Gjethja duhet të ketë ≥4 mostra - regularizim i pemës, redukton zhurmën       |
-| `min_samples_split` | 2 | Nyja duhet të ketë ≥2 mostra për t'u ndarë                                    |
+| `min_samples_leaf` | 4 | Gjethja duhet të ketë ≥ 4 mostra - regularizim i pemës, redukton zhurmën      |
+| `min_samples_split` | 2 | Nyja duhet të ketë ≥ 2 mostra për t'u ndarë                                   |
 | `max_features` | log2 | $m = \lfloor\log_2(9)\rfloor = 3$ veçori konsiderohen për çdo ndarje          |
 
 #### Rezultatet e Fazës III
@@ -572,10 +572,10 @@ Parametrat $A$ dhe $B$ përshtaten me maximum likelihood mbi një set validimi (
 **Arkitektura:**
 
 ```
-Shtresa Hyrëse:    9 neurone  (një për çdo veçori të zgjedhur)
-Shtresa e Fshehur 1: 64 neurone + aktivizimi ReLU
-Shtresa e Fshehur 2: 32 neurone + aktivizimi ReLU
-Shtresa Dalëse:    3 neurone  + Softmax (një për çdo klasë)
+Shtresa Hyrëse:        9 neurone   (një për çdo veçori të zgjedhur)
+Shtresa e Fshehur 1:  64 neurone + aktivizimi ReLU
+Shtresa e Fshehur 2:  32 neurone + aktivizimi ReLU
+Shtresa Dalëse:        3 neurone + Softmax (një për çdo klasë)
 ```
 
 #### Kalimi Përpara (Forward Pass)
@@ -773,7 +773,7 @@ $$P(W^+ = 15) = \frac{1}{2^5} = \frac{1}{32} = 0.03125 < 0.05$$
 
 ## 12. Mjetet Shtesë të Analizës
 
-Tre mjete u shtuan në Fazën III specifikisht për të shkuar përtej metrikave skalare dhe për t'iu përgjigjur pyetjeve më të thella: *pse vendos modeli kështu?*, *a është vërtet superior ndaj Fazës II në parashikime individuale?*, dhe *sa i ndjeshëm është modeli më i mirë ndaj hiperparametrit kryesor?*
+Tre mjete u shtuan në Fazën III specifikisht për të shkuar përtej metrikave skalare dhe për t'iu përgjigjur pyetjeve më të thella: *Pse vendos modeli kështu? A është vërtet superior ndaj Fazës II në parashikime individuale? Sa i ndjeshëm është modeli më i mirë ndaj hiperparametrit kryesor?*
 
 ---
 
